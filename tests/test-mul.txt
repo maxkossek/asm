@@ -1,0 +1,7 @@
+@ Expected r0 = 3, r1 = 12, r2 = 36, r3 = 24
+ENTRY
+	MOV	r0, #3
+	MLA	r1, r0, r0, r0
+	MUL	r2, r1, r0
+	MLS	r3, r0, r1, r1
+END

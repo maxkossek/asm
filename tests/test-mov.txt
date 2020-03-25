@@ -1,0 +1,8 @@
+@ Expected r0 = 3, r1 = 8, r2 = 0, r3 = -4, r4 = 3
+ENTRY
+	MOV	r0, #3
+	MOV	r1, #8
+	MOV	r2, #0
+	MVN	r3, r0
+	MOV	r4, r0
+END
