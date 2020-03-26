@@ -17,7 +17,7 @@
 int
 get_addr(struct tok t)
 {
-	int	addr, i = 0, lsl, n, rm, rn;
+	int	addr, lsl = 0, rm, rn;
 	char	*str = t.value;
 
 	if (*str++ != '[') {
@@ -26,24 +26,43 @@ get_addr(struct tok t)
 	}
 	rn = get_reg(str);
 	addr = r[rn];
-	while (*str != ']' && *str != '\0' && *str != ',')
+	while (*str != ',' && *str != ']' && *str != '\0')
 		str++;
 
 	if (*str == ',') {
-		while (*str != 'r' && *str != ']' && *str != '\0')
+		do {
 			str++;
-		rm = get_reg(str);
-		addr += r[rm];
+		} while (*str == ' ');
+		if (*str == 'r')
+			rm = get_reg(str);
+		else {
+			fprintf(stderr, "Invalid RM register in: %s\n",
+			t.value);
+			exit(EXIT_FAILURE);
+		}
+	
+		while (*str != ',' && *str != ']' && *str != '\0')
+			str++;
+
+		if (*str == ',') {
+			do {
+				str++;
+			} while (*str == ' ');
+			if (*str == 'L')
+				lsl = get_shift(str);
+			else {
+				fprintf(stderr, "Invalid LSL shift in: %s\n",
+						t.value);
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		addr += r[rm] << lsl;
 	}
-
-	while (*str != ']' && *str != '\0' && *str != ',')
-		str++;
-
-	/*** TODO: Add support for LSL. ***/
 
 	if (addr > ADDRSPACE_SIZE || addr < 0) {
 		fprintf(stderr, "Invalid address %d generated from: %s\n",
-			addr, str);
+			addr, t.value);
 		exit(EXIT_FAILURE);
 	}
 
@@ -99,10 +118,9 @@ get_hex(char *str)
 
 /* get_imm - Get the numeric value of an immediate value. */
 int
-get_imm(struct tok t)
+get_imm(char *str)
 {
 	int	n = 0;
-	char	*str = t.value;
 
 	if (str[0] != '#') {
 		fprintf(stderr, "Invalid immediate, must start with a '#'.\n");
@@ -302,4 +320,34 @@ get_reglist (struct tok t)
 	}
 
 	return reglist;
+}
+
+/* get_shift - Get the numeric value of a shift. */
+int
+get_shift(char *str)
+{
+	int	shift = -1;
+
+	if (str[0] != 'L' || str[1] != 'S' || str[2] != 'L') {
+		fprintf(stderr, "Invalid LSL shift: %s.\n", str);
+		exit(EXIT_FAILURE);
+	}
+	str += 3;
+	while (*str == ' ')
+		str++;
+
+	if (*str == '#' && isdigit(*(str + 1)) && *(str + 2) == ']')
+		shift = *(str + 1) - '0';
+	else {
+		fprintf(stderr, "Invalid LSL shift: %s.\n", str);
+		exit(EXIT_FAILURE);
+	}
+
+	if (shift < 0 || shift > 3) {
+		fprintf(stderr, "Shift amount '%d' is out of range (0-3).\n",
+			shift);
+		exit(EXIT_FAILURE);
+	}
+
+	return shift;
 }

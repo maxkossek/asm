@@ -1,10 +1,11 @@
-@ Expected: r1 = 994, r2 = 4095, r3 = 5, r4 = 7, r5 = 7, MEM[999] = 5
+@ Expected: r1 = 994, r2 = 4095, r3 = 5, r4 = 2, r5 = 2
+@ MEM[998] = 2, MEM[999] = 5
 ENTRY
 	LDR	r1,=994
 	LDR	r2,=0xfff
 	MOV	r3, #5
 	STR	r3, [r1, r3]
-	MOV	r4, #7
-	STR	r4, [r1]
-	LDR	r5, [r1]
+	MOV	r4, #2
+	STR	r4, [r1, r4, LSL #1]
+	LDR	r5, [r1, r4, LSL #1]
 END

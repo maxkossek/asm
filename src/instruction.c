@@ -48,7 +48,7 @@ rd_op2(struct inst in)
 	instruction = get_inst(in.mnemonic);
 
 	if (in.op[1].token == IMM)
-		op2 = get_imm(in.op[1]);
+		op2 = get_imm(in.op[1].value);
 	else if (in.op[1].token == ID) {
 		op2 = get_reg(in.op[1].value);
 		op2 = r[op2];
@@ -96,7 +96,7 @@ rd_rn_op2(struct inst in) {
 	instruction = get_inst(in.mnemonic);
 
 	if (in.op[2].token == IMM)
-		op2 = get_imm(in.op[2]);
+		op2 = get_imm(in.op[2].value);
 	else if (in.op[2].token == ID) {
 		op2 = get_reg(in.op[2].value);
 		op2 = r[op2];

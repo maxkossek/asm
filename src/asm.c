@@ -24,7 +24,7 @@ main(int argc, char *argv[])
 	parse();
 	execute();
 
-	printf("\nREGISTERS:\n");
+	printf("- REGISTERS -\n");
 	for (int i = 0; i < (sizeof(r) / sizeof(int)); i++) {
 		if (i == SP)
 			printf("SP\t= %d\n", r[i]);
@@ -38,9 +38,13 @@ main(int argc, char *argv[])
 			printf("r[%d]\t= %d\n", i, r[i]);
 	}
 
-	printf("\nSTACK:\n");
-	for (int i = r[SP]; i <= ADDRSPACE_SIZE; i++)
-		printf("%#04x (%d): %#04x\n", i, i, a[i]);
+	printf("\n- MEMORY -\n");
+	for (int i = 0; i <= ADDRSPACE_SIZE; i++) {
+		if (i == r[SP])
+			printf("- STACK -\n");
+		if (a[i] != 0 || i > r[SP])
+			printf("%#04x (%d): %#04x\n", i, i, a[i]);
+	}
 
 	return 0;
 }
