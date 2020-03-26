@@ -9,6 +9,34 @@
 #include "instruction.h"
 
 /*
+ * Syntax: op{cond} label
+ * B, BL.
+ */
+int
+label(struct inst in)
+{
+	int	label;
+	Inst	instruction;
+
+	instruction = get_inst(in.mnemonic);
+	label = get_labeladdr(in.op[0].value);
+
+	if (instruction == B)
+		r[PC] = label;
+	else if (instruction == BL) {
+		r[LR] = ++r[PC];
+		r[PC] = label;
+	}
+	else {
+		fprintf(stderr, "Invalid instruction opcode: %s\n",
+			in.op[0].value);
+		exit(EXIT_FAILURE);
+	}
+
+	return 0;
+}
+
+/*
  * Syntax: op{cond} Rd,=[expr | label-expression]
  * LDR.
  */
@@ -188,12 +216,10 @@ reglist(struct inst in)
 		if (instruction == PUSH) {
 			r[SP]--;
 			a[r[SP]] = r[reg_num];
-			printf("MEM[%d] = r[%d]\n", r[SP], reg_num);
 		}
 		else if (instruction == POP) {
 			r[reg_num] = a[r[SP]];
 			r[SP]++;
-			printf("r[%d] = MEM[%d]\n", reg_num, r[SP]);
 		}
 
 		if (r[SP] >= ADDRSPACE_SIZE) {

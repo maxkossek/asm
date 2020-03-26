@@ -5,9 +5,11 @@ Work in progress ARM architecture instruction emulator.
 
 Supported instructions:
 - Arithemtic operators.
+- Branch and branch with link instructions.
 - Bitwise operators.
 - Data movement instructions.
 - Load / store instructions without shifts.
+- Push / Pop instructions.
 
 Not yet supported:
 - Assign memory addresses to instructions.

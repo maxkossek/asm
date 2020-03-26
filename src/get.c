@@ -10,6 +10,8 @@
 #include "get.h"
 #include "parser.h"
 
+extern int addre_size;
+
 /*
  * get_addr - Get the address value from an input string of form:
  * "[Rn, Rm {, LSL #n}]".
@@ -156,7 +158,11 @@ get_inst(struct tok t)
 			return AND;
 	}
 	else if (str[0] == 'B') {
-		if (strcmp(str, "BIC") == 0)
+		if (strcmp(str, "B") == 0)
+			return B;
+		else if (strcmp(str, "BL") == 0)
+			return BL;
+		else if (strcmp(str, "BIC") == 0)
 			return BIC;
 	}
 	else if (str[0] == 'C') {
@@ -239,6 +245,27 @@ get_int(char *str)
 
 	return num;
 }
+
+
+/* get_labeladdr - Get the address of a label. */
+int
+get_labeladdr(char *str)
+{
+	int	addr = -1;
+
+	for (int i = 0; i < addre_size || addr < 0; i++) {
+		if (strcmp(addre[i].mnemonic.value, str) == 0)
+			addr = i;
+	}
+
+	if (addr == -1) {
+		fprintf(stderr, "Label '%s' not found\n.", str);
+		exit(EXIT_FAILURE);
+	}
+
+	return addr;
+}
+
 
 /* get_reg - Get the numeric value of register. */
 int

@@ -5,7 +5,7 @@
 
 typedef enum {
 	ADC, ADD, AND,
-	BIC,
+	B, BIC, BL,
 	CMN, CMP,
 	EOR, ERR,
 	LDR,
@@ -19,6 +19,7 @@ typedef enum {
 extern int r[];
 extern int a[];
 
+int	label(struct inst in);
 int	rd_expr(struct inst in);
 int	rd_op2(struct inst in);
 int	rd_rn_op2(struct inst in);

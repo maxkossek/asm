@@ -1,0 +1,11 @@
+@ Expected: r1 = 3, r2 = 5, r3 = 5
+ENTRY
+loopA:
+	MOV	r1, #3
+	MOV	r2, #5
+	BL	loopC
+loopB:
+	ADD	r3, r2, r1
+loopC:
+	SUB	r3, r2, r3
+END

@@ -1,9 +1,8 @@
+@ Expected r0 = 3, r1 = #7, r2 = #7
 ENTRY
 	MOV	r0, #3
 	MOV	r1, #7
 	MOV	r2, #4
 	PUSH	{r0-r1}
-	PUSH	{r2,r0}
-	PUSH	{r0-r5}
 	POP	{r2}
 END
