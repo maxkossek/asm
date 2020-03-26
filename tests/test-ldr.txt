@@ -1,0 +1,10 @@
+@ Expected: r1 = 994, r2 = 4095, r3 = 5, r4 = 7, r5 = 7, MEM[999] = 5
+ENTRY
+	LDR	r1,=994
+	LDR	r2,=0xfff
+	MOV	r3, #5
+	STR	r3, [r1, r3]
+	MOV	r4, #7
+	STR	r4, [r1]
+	LDR	r5, [r1]
+END

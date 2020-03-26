@@ -1,17 +1,85 @@
 /* instruction.c - Processing ARM assembly instructions. */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "arm.h"
+#include "asm.h"
 #include "get.h"
 #include "lexer.h"
 #include "instruction.h"
 
-extern int r[];
-extern int a[];
+/*
+ * Syntax: op{cond} Rd,=[expr | label-expression]
+ * LDR.
+ */
+int
+rd_expr(struct inst in)
+{
+	int	rd, expr;
+	Inst	instruction;
 
+	rd = get_reg(in.op[0].value);
+	expr = get_expr(in.op[1]);
+	instruction = get_inst(in.mnemonic);
+
+	if (instruction == LDR)
+		r[rd] = expr;
+	else {
+		fprintf(stderr, "Invalid instruction opcode: %s\n",
+			in.op[0].value);
+		exit(EXIT_FAILURE);
+	}
+
+	return 0;
+}
+
+
+/*
+ * Syntax: OP{S}{cond} Rd, Op2
+ * CMP, CMN, MOV, MOVN.
+ */
+int
+rd_op2(struct inst in)
+{
+	int	rd, op2, val;
+	Inst	instruction;
+
+	rd = get_reg(in.op[0].value);
+	instruction = get_inst(in.mnemonic);
+
+	if (in.op[1].token == IMM)
+		op2 = get_imm(in.op[1]);
+	else if (in.op[1].token == ID) {
+		op2 = get_reg(in.op[1].value);
+		op2 = r[op2];
+	}
+
+	if (instruction == CMP)
+		val = r[rd] - op2;
+	else if (instruction == CMN)
+		val = r[rd] + op2;
+	else if (instruction == MOV)
+		r[rd] = op2;
+	else if (instruction == MVN)
+		r[rd] = (~ op2);
+	else {
+		fprintf(stderr, "Invalid instruction opcode: %s\n",
+			in.op[0].value);
+		exit(EXIT_FAILURE);
+	}
+
+	if (instruction == CMP || instruction == CMN) {
+		/* Set Flags: N, Z, C, V. */
+		/*** TODO: Carry and overflow flags. */
+		r[APSR] = 0;
+		if (val < 0)
+			r[APSR] = r[APSR] | NFLAG;
+		else if (val == 0)
+			r[APSR] = r[APSR] | ZFLAG;
+	}
+
+	return 0;
+}
 
 /*
  * Syntax: op{cond}{S} Rd, Rn, Op2
@@ -63,53 +131,6 @@ rd_rn_op2(struct inst in) {
 		exit(EXIT_FAILURE);
 	}
 	/*** TODO: HANDLE CARRY INSTRUCTION ADC, SBC, RSC. ***/
-
-	return 0;
-}
-
-/*
- * Syntax: OP{S}{cond} Rd, Op2
- * CMP, CMN.
- * MOV, MOVN.
- */
-int
-rd_op2(struct inst in)
-{
-	int	rd, op2, val;
-	Inst	instruction;
-
-	rd = get_reg(in.op[0].value);
-	instruction = get_inst(in.mnemonic);
-
-	if (in.op[1].token == IMM)
-		op2 = get_imm(in.op[1]);
-	else if (in.op[1].token == ID) {
-		op2 = get_reg(in.op[1].value);
-		op2 = r[op2];
-	}
-
-	if (instruction == CMP)
-		val = r[rd] - op2;
-	else if (instruction == CMN)
-		val = r[rd] + op2;
-	else if (instruction == MOV)
-		r[rd] = op2;
-	else if (instruction == MVN)
-		r[rd] = (~ op2);
-	else {
-		fprintf(stderr, "Invalid opcode\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (instruction == CMP || instruction == CMN) {
-		/* Set Flags: N, Z, C, V. */
-		/*** TODO: Carry and overflow flags. */
-		r[APSR] = 0;
-		if (val < 0)
-			r[APSR] = r[APSR] | NFLAG;
-		else if (val == 0)
-			r[APSR] = r[APSR] | ZFLAG;
-	}
 
 	return 0;
 }
@@ -182,6 +203,33 @@ reglist(struct inst in)
 	}
 
 	free(reglist);
+
+	return 0;
+}
+
+/*
+ * Syntax: op{type}{cond} Rt, [Rn, Rm {, LSL #n}]
+ * LDR, STR.
+ */
+int
+rt_addr(struct inst in)
+{
+	int	rt, addr;
+	Inst	instruction;
+
+	rt = get_reg(in.op[0].value);
+	addr = get_addr(in.op[1]);
+	instruction = get_inst(in.mnemonic);
+
+	if (instruction == LDR)
+		r[rt] = a[addr];
+	else if (instruction == STR)
+		a[addr] = r[rt];
+	else {
+		fprintf(stderr, "Invalid instruction opcode: %s\n",
+			in.op[0].value);
+		exit(EXIT_FAILURE);
+	}
 
 	return 0;
 }

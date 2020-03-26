@@ -1,1 +1,18 @@
-# asm - Assembly instruction emulator
+asm - ARM assembly instruction emulator
+=======================================
+
+Work in progress ARM architecture instruction emulator.
+
+Supported instructions:
+- Arithemtic operators.
+- Bitwise operators.
+- Data movement instructions.
+- Load / store instructions without shifts.
+
+Not yet supported:
+- Assign memory addresses to instructions.
+- Branching and label support.
+- Conditional flag support for instructions.
+- Limit what immediate values can be loaded using instructions such as mov.
+- Shifting / rotating of immediate and register values.
+- Support for execution types.

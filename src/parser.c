@@ -75,6 +75,10 @@ execute()
 
 		if (op_count == 1 && addre[i].op[0].token == REGLIST)
 			reglist(addre[i]);
+		else if (op_count == 2 && addre[i].op[1].token == ADDR)
+			rt_addr(addre[i]);
+		else if (op_count == 2 && addre[i].op[1].token == EXPR)
+			rd_expr(addre[i]);
 		else if (op_count == 2)
 			rd_op2(addre[i]);
 		else if (op_count == 3)
@@ -112,7 +116,8 @@ parse_instruction()
 	while (t.token == COMMA && count <= MAXOP) {
 		expect(COMMA);
 		t = peek();
-		if (t.token == ID || t.token == IMM || t.token == ADDR) {
+		if (t.token == ID || t.token == IMM || t.token == ADDR
+			|| t.token == EXPR) {
 			t = get_token();
 			i.op[count++] = t;
 			t = peek();

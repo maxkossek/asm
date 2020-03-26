@@ -6,65 +6,113 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "asm.h"
 #include "get.h"
 #include "parser.h"
 
+/*
+ * get_addr - Get the address value from an input string of form:
+ * "[Rn, Rm {, LSL #n}]".
+ */ 
 int
-get_imm(struct tok t)
+get_addr(struct tok t)
+{
+	int	addr, i = 0, lsl, n, rm, rn;
+	char	*str = t.value;
+
+	if (*str++ != '[') {
+		fprintf(stderr, "Invalid address, must start with a '['.\n");
+		exit(EXIT_FAILURE);
+	}
+	rn = get_reg(str);
+	addr = r[rn];
+	while (*str != ']' && *str != '\0' && *str != ',')
+		str++;
+
+	if (*str == ',') {
+		while (*str != 'r' && *str != ']' && *str != '\0')
+			str++;
+		rm = get_reg(str);
+		addr += r[rm];
+	}
+
+	while (*str != ']' && *str != '\0' && *str != ',')
+		str++;
+
+	/*** TODO: Add support for LSL. ***/
+
+	if (addr > ADDRSPACE_SIZE || addr < 0) {
+		fprintf(stderr, "Invalid address %d generated from: %s\n",
+			addr, str);
+		exit(EXIT_FAILURE);
+	}
+
+	return addr;
+}
+
+/* get_expr - Get the value from an expression of the form: "=num". */
+int
+get_expr(struct tok t)
 {
 	int	n = 0, i = 0;
 	char	*str = t.value;
 
-	if (str[i++] != '#') {
+	if (str[i++] != '=') {
+		fprintf(stderr, "Invalid expression, must start with a '='.\n");
+		exit(EXIT_FAILURE);
+	}
+	if (str[1] == '0' && str[2] == 'x')
+		n = get_hex(str + 3);
+	else
+		n = get_int(str + 1);
+
+	return n;
+}
+
+/* get_hex - Return the hexadecimal value from an input string. */
+int
+get_hex(char *str)
+{
+	int	num = 0;
+	char	c;
+
+	c = *str;
+
+	do {
+		num *= 16;
+		if (c >= '0' && c <= '9')
+			num += c - 48;
+		else if (c >= 'a' && c <= 'f')
+			num += c - 87;
+		else if (c >= 'A' && c <= 'F')
+			num += c - 55;
+		else {
+			fprintf(stderr, "Invalid hex character: '%c'. "
+				"Must be '0'-'9' or 'a'-'f'\n", c);
+			exit(EXIT_FAILURE);
+		}
+		c = *++str;
+	} while (c != '\0');
+
+	return num;
+}
+
+/* get_imm - Get the numeric value of an immediate value. */
+int
+get_imm(struct tok t)
+{
+	int	n = 0;
+	char	*str = t.value;
+
+	if (str[0] != '#') {
 		fprintf(stderr, "Invalid immediate, must start with a '#'.\n");
 		exit(EXIT_FAILURE);
 	}
-	while (isdigit(str[i])) {
-		n *= 10;
-		n += str[i++] - '0';
-	}
 
-	if (str[i] != '\0' || n < 0 || n > UINT_MAX) {
-		fprintf(stderr, "Invalid immediate value: %s\n", str);
-		exit(EXIT_FAILURE);
-	}
-
-	return n;
-
-}
-
-int
-get_reg(char *str)
-{
-	int	n;
-	int	separator;
-
-	if (str[0] != 'r') {
-		fprintf(stderr, "String '%s' not a register. Must being with a "
-			"'r' character, not '%c'.\n", str, str[0]);
-		exit(EXIT_FAILURE);
-	}
-	if (isdigit(str[1])) {
-		n = str[1] - '0';
-		separator = 2;
-	}
-	if (isdigit(str[1]) && isdigit(str[2])) {
-		n *= 10;
-		n += (str[2] - '0');
-		separator = 3;
-	}
-	if (str[separator] != '\0' && str[separator] != ','
-		&& str[separator] != '-' && str[separator] != '}'
-		&& str[separator] != ']') {
-		fprintf(stderr, "Invalid register: %s\n", str);
-		exit(EXIT_FAILURE);
-	}
-		
-	if (n < 0 || n > MAXREG) {
-		fprintf(stderr, "Register '%s' is out of range (0-%d).\n",
-			str, MAXREG);
-		exit(EXIT_FAILURE);
-	}
+	if (str[1] == '0' && str[2] == 'x')
+		n = get_hex(str + 3);
+	else
+		n = get_int(str + 1);
 
 	return n;
 }
@@ -134,6 +182,8 @@ get_inst(struct tok t)
 	else if (str[0] == 'S') {
 		if (strcmp(str, "SUB") == 0)
 			return SUB;
+		if (strcmp(str, "STR") == 0)
+			return STR;
 	}
 
 	if (inst == ERR) {
@@ -142,6 +192,71 @@ get_inst(struct tok t)
 	}
 
 	return inst;
+}
+
+/* get_int - Get the integer value from an input string. */
+int
+get_int(char *str)
+{
+	int	num = 0;
+	char	c;
+
+	c = *str;
+
+	do {
+		num *= 10;
+		if (c >= '0' && c <= '9')
+			num += c - 48;
+		else {
+			fprintf(stderr, "Invalid number: %s.", str);
+			exit(EXIT_FAILURE);
+		}
+		c = *++str;
+	} while (c != '\0' && num < UINT_MAX);
+
+	if (num < 0 || num > UINT_MAX) {
+		fprintf(stderr, "Invalid number: %s\n", str);
+		exit(EXIT_FAILURE);
+	}
+
+	return num;
+}
+
+/* get_reg - Get the numeric value of register. */
+int
+get_reg(char *str)
+{
+	int	n;
+	int	separator;
+
+	if (str[0] != 'r') {
+		fprintf(stderr, "String '%s' not a register. Must being with a "
+			"'r' character, not '%c'.\n", str, str[0]);
+		exit(EXIT_FAILURE);
+	}
+	if (isdigit(str[1])) {
+		n = str[1] - '0';
+		separator = 2;
+	}
+	if (isdigit(str[1]) && isdigit(str[2])) {
+		n *= 10;
+		n += (str[2] - '0');
+		separator = 3;
+	}
+	if (str[separator] != '\0' && str[separator] != ','
+		&& str[separator] != '-' && str[separator] != '}'
+		&& str[separator] != ']') {
+		fprintf(stderr, "Invalid register: %s\n", str);
+		exit(EXIT_FAILURE);
+	}
+		
+	if (n < 0 || n > MAXREG) {
+		fprintf(stderr, "Register '%s' is out of range (0-%d).\n",
+			str, MAXREG);
+		exit(EXIT_FAILURE);
+	}
+
+	return n;
 }
 
 

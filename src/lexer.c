@@ -14,7 +14,7 @@ lex_input()
 
 	while ((t = gettok()).token != ENDOFFILE) {
 		tokens[count++] = t;
-		/* Print token information for debugging.
+		/* PRINT TOKENS FOR DEBUGGING
 		printf("[%d", t.token);
 		if (t.value != NULL)
 			printf(" = %s", t.value);
@@ -73,8 +73,16 @@ gettok()
 			t = gettok();
 		}
 	}
-	else if (c == '[')
-		t.token = BRACKETL;
+	else if (c == '=') {
+		ungetc(c, stdin);
+		t.value = parse_num();
+		t.token = EXPR;
+	}
+	else if (c == '[') {
+		ungetc(c, stdin);
+		t.value = parse_addr();
+		t.token = ADDR;
+	}
 	else if (c == ']')
 		t.token = BRACKETR;
 	else if (c == '{') {
@@ -142,6 +150,41 @@ parse_id()
 	}
 
 	return t;
+}
+
+/* parse_addr - Parses an address of the form '[ADDR]'. */
+char *
+parse_addr()
+{
+	int		size = 0;
+	char		c;
+	char		str[ID_SIZE];
+	char		*ptr;
+
+	c = getchar();
+	if (c == '[')
+		str[size++] = c;
+	else {
+		fprintf(stderr, "Error parsing address.\n");
+		exit(EXIT_FAILURE);
+	}
+	c = getchar();
+	while (c != ']' && size < ID_SIZE - 1) {
+		str[size++] = c;
+		c = getchar();
+	}
+	str[size++] = c;
+	str[size] = '\0';
+
+	if (size == ID_SIZE) {
+		fprintf(stderr, "Address size overflow.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	ptr = malloc(size + 1);
+	strlcpy(ptr, str, size + 1);
+
+	return ptr;
 }
 
 char *

@@ -1,15 +1,12 @@
-/* arm - ARM assembly language interpreter. */
+/* asm - ARM assembly language emulator. */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "arm.h"
+#include "asm.h"
 #include "lexer.h"
 #include "parser.h"
-/*
-#include "instruction.h"
-*/
 
 /* Register and address space arrays. */
 int	r[REGCOUNT] = { 0 };

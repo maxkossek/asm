@@ -6,7 +6,7 @@
 
 typedef enum {
 	ADDR, BRACKETL, BRACKETR, COLON, COMMA,
-	END, ENDOFFILE, ENTRY, ID, IMM, NEWLINE, NUM, REGLIST, TAB
+	EXPR, END, ENDOFFILE, ENTRY, ID, IMM, NEWLINE, NUM, REGLIST, TAB
 } Token;
 
 struct tok {
@@ -20,6 +20,7 @@ struct tok 	tokens[TOKENSIZE];
 int		lex_input();
 struct tok	gettok();
 struct tok	parse_id();
+char		*parse_addr();
 char		*parse_num();
 char		*parse_reglist();
 

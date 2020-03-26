@@ -5,9 +5,13 @@
 
 #define MAXREG 16
 
+int	get_addr(struct tok t);
+int	get_expr(struct tok t);
+int	get_hex(char *str);
 int	get_imm(struct tok t);
-int	get_reg(char *str);
 Inst	get_inst(struct tok t);
+int	get_int(char *str);
+int	get_reg(char *str);
 int	*get_reglist(struct tok t);
 
 #endif
