@@ -8,6 +8,7 @@
 
 #include "asm.h"
 #include "get.h"
+#include "instruction.h"
 #include "parser.h"
 
 int	addre_size = 0;
@@ -21,32 +22,34 @@ unget_token()
 int
 execute()
 {
-	int	op_count, pc;
+	int	pc;
+	Type	type;
 	r[PC] = 0;
 
 	for ( ; r[PC] < addre_size; r[PC]++) {
 		pc = r[PC];
-		op_count = addre[pc].op_count;
-		
-		if (op_count == 0 && addre[pc].mnemonic.token == ID)
+		type = addre[pc].type;
+
+		if (type == I_NAME)
 			;
-		else if (op_count == 1 && addre[pc].op[0].token == REGLIST)
-			reglist(addre[pc]);
-		else if (op_count == 1 && addre[pc].op[0].token == ID)
+		else if (type == I_LABEL)
 			label(addre[pc]);
-		else if (op_count == 2 && addre[pc].op[1].token == ADDR)
-			rt_addr(addre[pc]);
-		else if (op_count == 2 && addre[pc].op[1].token == EXPR)
+		else if (type == I_RD_EXPR)
 			rd_expr(addre[pc]);
-		else if (op_count == 2)
+		else if (type == I_RD_OP2)
 			rd_op2(addre[pc]);
-		else if (op_count == 3)
+		else if (type == I_RD_RN_OP2)
 			rd_rn_op2(addre[pc]);
-		else if (op_count == 4)
+		else if (type == I_RD_RN_RM_RA)
 			rd_rn_rm_ra(addre[pc]);
+		else if (type == I_REGL)
+			reglist(addre[pc]);
+		else if (type == I_RT_ADDR)
+			rt_addr(addre[pc]);
+		else if (type == I_RT_ADDR)
+			rt_addr(addre[pc]);
 		else {
-			fprintf(stderr, "Invalid instruction: %s.\n",
-				addre[pc].mnemonic.value);
+			fprintf(stderr, "Invalid instruction.\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -97,42 +100,115 @@ parse()
 	return 0;
 }
 
-
 struct inst
 parse_instruction()
 {
-	int		count = 0;
 	struct tok 	t;
 	struct inst	i;
 
 	t = expect(TAB);
 	t = expect(ID);
-	i.mnemonic = t;
+	i.mnemonic = get_inst(t);
+	i.cond = AL;
+	i.type = I_NONE;
+	i.imm = OP2_REG;
 	expect(TAB);
 
-	t = peek();
-	if (t.token == ID || t.token == REGLIST)
-		i.op[count++] = get_token();
+	t = get_token();
+	if (t.token == ID) {
+		/* No destination register, so parse label. */
+		if ((i.dest = get_reg(t.value)) == -1) {
+			i.dest = -1;
+			i.label = malloc(strlen(t.value) + 1);
+			strlcpy(i.label, t.value, strlen(t.value) + 1);
+			i.type = I_LABEL;
+		}
+	}
+	else if (t.token == REGLIST) {
+		if (get_reglist(t, &i.reglist) < 0)
+			fprintf(stderr, "Invalid reglist: %s.\n", t.value);
+		i.type = I_REGL;
+	}
 	else
 		syntax_error(t.token);
 
 	t = peek();
-	while (t.token == COMMA && count <= MAXOP) {
+	if (t.token == COMMA) {
 		expect(COMMA);
-		t = peek();
-		if (t.token == ID || t.token == IMM || t.token == ADDR
-			|| t.token == EXPR) {
-			t = get_token();
-			i.op[count++] = t;
-			t = peek();
+		t = get_token();
+		if (t.token == IMM) {
+			i.type = I_RD_OP2;
+			i.op1 = get_imm(t.value);
+			if (i.op1 < 0)
+				fprintf(stderr, "Invalid immediate: %s.\n",
+					t.value);
+			i.op2 = i.op1;
+			i.imm = OP2_IMM;
 		}
+		else if (t.token == ID) {
+			i.type = I_RD_OP2;
+			i.op1 = get_reg(t.value);
+			if (i.op1 < 0)
+				fprintf(stderr, "Invalid register: %s.\n",
+					t.value);
+			i.op2 = i.op1;
+			i.imm = OP2_REG;
+		}
+		else if (t.token == EXPR) {
+			i.type = I_RD_EXPR;
+			i.op1 = get_expr(t.value);
+			if (i.op1 < 0)
+				fprintf(stderr, "Invalid expression: %s.\n",
+					t.value);
+		}
+		else if (t.token == ADDR) {
+			i.type = I_RT_ADDR;
+			if (get_addr(t.value, &i.op1, &i.op2, &i.lsl) < 0)
+				fprintf(stderr, "Invalid expression: %s.\n",
+					t.value);
+		}
+		else
+			syntax_error(t.token);
 	}
 
-	if (count > MAXOP) {
-		fprintf(stderr, "Operand count overflow\n.");
-		exit(EXIT_FAILURE);
+	t = peek();
+	if (t.token == COMMA) {
+		expect(COMMA);
+		t = get_token();
+		if (t.token == IMM) {
+			i.type = I_RD_RN_OP2;
+			i.op2 = get_imm(t.value);
+			if (i.op2 < 0)
+				fprintf(stderr, "Invalid immediate: %s.\n",
+					t.value);
+			i.imm = OP2_IMM;
+		}
+		else if (t.token == ID) {
+			i.type = I_RD_RN_OP2;
+			i.op2 = get_reg(t.value);
+			if (i.op2 < 0)
+				fprintf(stderr, "Invalid register: %s.\n",
+					t.value);
+			i.imm = OP2_REG;
+		}
+		else
+			syntax_error(t.token);
 	}
-	i.op_count = count;
+
+	t = peek();
+	if (t.token == COMMA) {
+		expect(COMMA);
+		t = get_token();
+		if (t.token == ID) {
+			i.type = I_RD_RN_RM_RA;
+			i.op3 = get_reg(t.value);
+			if (i.op3 < 0)
+				fprintf(stderr, "Invalid register: %s.\n",
+					t.value);
+		}
+		else
+			syntax_error(t.token);
+	}
 
 	return i;
 }
@@ -144,10 +220,11 @@ parse_label()
 	struct tok 	t;
 	struct inst	i;
 
-	i.op_count = 0;
+	i.type = I_NAME;
 
 	t = expect(ID);
-	i.mnemonic = t;
+	i.label = malloc(strlen(t.value) + 1);
+	strlcpy(i.label, t.value, strlen(t.value) + 1);
 	expect(COLON);
 
 	return i;

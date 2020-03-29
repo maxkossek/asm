@@ -4,9 +4,9 @@
 #include <string.h>
 
 #include "asm.h"
-#include "get.h"
-#include "lexer.h"
 #include "instruction.h"
+
+extern int addre_size;
 
 /*
  * Syntax: op{cond} label
@@ -18,22 +18,41 @@ label(struct inst in)
 	int	label;
 	Inst	instruction;
 
-	instruction = get_inst(in.mnemonic);
-	label = get_labeladdr(in.op[0].value);
+	instruction = in.mnemonic;
+	label = labeladdr(in.label);
 
 	if (instruction == B)
 		r[PC] = label;
 	else if (instruction == BL) {
-		r[LR] = ++r[PC];
+		r[LR] = r[PC];
 		r[PC] = label;
 	}
 	else {
-		fprintf(stderr, "Invalid instruction opcode: %s\n",
-			in.op[0].value);
+		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	return 0;
+}
+
+/* get_labeladdr - Get the address of a label. */
+int
+labeladdr(char *str)
+{
+	int	addr = -1;
+
+	for (int i = 0; i < addre_size || addr < 0; i++) {
+		if (addre[i].type == I_NAME &&
+			strcmp(addre[i].label, str) == 0)
+			addr = i;
+	}
+
+	if (addr == -1) {
+		fprintf(stderr, "Label '%s' not found\n.", str);
+		return -1;
+	}
+
+	return addr;
 }
 
 /*
@@ -46,15 +65,14 @@ rd_expr(struct inst in)
 	int	rd, expr;
 	Inst	instruction;
 
-	rd = get_reg(in.op[0].value);
-	expr = get_expr(in.op[1]);
-	instruction = get_inst(in.mnemonic);
+	rd = in.dest;
+	expr = in.op1;
+	instruction = in.mnemonic;
 
 	if (instruction == LDR)
 		r[rd] = expr;
 	else {
-		fprintf(stderr, "Invalid instruction opcode: %s\n",
-			in.op[0].value);
+		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -72,13 +90,13 @@ rd_op2(struct inst in)
 	int	rd, op2, val;
 	Inst	instruction;
 
-	rd = get_reg(in.op[0].value);
-	instruction = get_inst(in.mnemonic);
+	instruction = in.mnemonic;
+	rd = in.dest;
 
-	if (in.op[1].token == IMM)
-		op2 = get_imm(in.op[1].value);
-	else if (in.op[1].token == ID) {
-		op2 = get_reg(in.op[1].value);
+	if (in.imm == OP2_IMM)
+		op2 = in.op2;
+	else if (in.imm == OP2_REG) {
+		op2 = in.op2;
 		op2 = r[op2];
 	}
 
@@ -91,8 +109,7 @@ rd_op2(struct inst in)
 	else if (instruction == MVN)
 		r[rd] = (~ op2);
 	else {
-		fprintf(stderr, "Invalid instruction opcode: %s\n",
-			in.op[0].value);
+		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -119,20 +136,15 @@ rd_rn_op2(struct inst in) {
 	int	rd, rn, op2;
 	Inst	instruction;
 
-	rd = get_reg(in.op[0].value);
-	rn = get_reg(in.op[1].value);
-	instruction = get_inst(in.mnemonic);
+	instruction = in.mnemonic;
+	rd = in.dest;
+	rn = in.op1;
 
-	if (in.op[2].token == IMM)
-		op2 = get_imm(in.op[2].value);
-	else if (in.op[2].token == ID) {
-		op2 = get_reg(in.op[2].value);
+	if (in.imm == OP2_IMM)
+		op2 = in.op2;
+	else if (in.imm == OP2_REG) {
+		op2 = in.op2;
 		op2 = r[op2];
-	}
-	else {
-		fprintf(stderr, "Invalid third operand in ADD / SUB: %d.\n",
-			in.op[2].token);
-		exit(EXIT_FAILURE);
 	}
 
 	if (instruction == ADD)
@@ -154,8 +166,7 @@ rd_rn_op2(struct inst in) {
 	else if (instruction == SUB)
 		r[rd] = r[rn] - op2;
 	else {
-		fprintf(stderr, "Invalid Rd, Rn, Op2 instruction: %s\n",
-			in.mnemonic.value);
+		fprintf(stderr, "Invalid Rd, Rn, Op2 instruction.\n");
 		exit(EXIT_FAILURE);
 	}
 	/*** TODO: HANDLE CARRY INSTRUCTION ADC, SBC, RSC. ***/
@@ -172,18 +183,18 @@ rd_rn_rm_ra(struct inst in) {
 	int	rd, rn, rm, ra;
 	Inst	instruction;
 
-	instruction = get_inst(in.mnemonic);
-	rd = get_reg(in.op[0].value);
-	rn = get_reg(in.op[1].value);
-	rm = get_reg(in.op[2].value);
-	ra = get_reg(in.op[3].value);
+	instruction = in.mnemonic;
+	rd = in.dest;
+	rn = in.op1;
+	rm = in.op2;
+	ra = in.op3;
 
 	if (instruction == MLA)
 		r[rd] = r[rn] * r[rm] + r[ra];
 	else if (instruction == MLS)
 		r[rd] = r[rn] * r[rm] - r[ra];
 	else {
-		fprintf(stderr, "Invalid opcode\n");
+		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -198,21 +209,17 @@ int
 reglist(struct inst in)
 {
 	int	reg_num;
-	int	*reglist;
 	Inst	instruction;
 
-	instruction = get_inst(in.mnemonic);
-	reglist = get_reglist(in.op[0]);
-
+	instruction = in.mnemonic;
 
 	if (instruction != PUSH && instruction != POP) {
-		fprintf(stderr, "Invalid PUSH/POP instruction: %s\n",
-				in.mnemonic.value);
+		fprintf(stderr, "Invalid reglist instruction.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	for (int i = 0; reglist[i] != -1 && i < MAXREG; i++) {
-		reg_num = reglist[i];
+	for (int i = 0; in.reglist[i] != -1 && i < MAXREG; i++) {
+		reg_num = in.reglist[i];
 		if (instruction == PUSH) {
 			r[SP]--;
 			a[r[SP]] = r[reg_num];
@@ -228,8 +235,6 @@ reglist(struct inst in)
 		}
 	}
 
-	free(reglist);
-
 	return 0;
 }
 
@@ -243,17 +248,21 @@ rt_addr(struct inst in)
 	int	rt, addr;
 	Inst	instruction;
 
-	rt = get_reg(in.op[0].value);
-	addr = get_addr(in.op[1]);
-	instruction = get_inst(in.mnemonic);
+	instruction = in.mnemonic;
+	rt = in.dest;
+	addr = r[in.op1] + (r[in.op2] << in.lsl);
+
+	if (addr > ADDRSPACE_SIZE || addr < 0) {
+		fprintf(stderr, "Invalid address %d\n", addr);
+		exit(EXIT_FAILURE);
+	}
 
 	if (instruction == LDR)
 		r[rt] = a[addr];
 	else if (instruction == STR)
 		a[addr] = r[rt];
 	else {
-		fprintf(stderr, "Invalid instruction opcode: %s\n",
-			in.op[0].value);
+		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
 	}
 

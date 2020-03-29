@@ -1,0 +1,14 @@
+@ Expected: R1 = 82
+ENTRY
+	MOV	r1, #3
+	BL	square
+	BL	square
+	B	exit
+
+square:
+	MUL	r1, r1, r1
+	MOV	r15, r14
+
+exit:
+	ADD	r1, r1, #1
+END

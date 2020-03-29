@@ -5,4 +5,5 @@ ENTRY
 	MOV	r2, #4
 	PUSH	{r0-r1}
 	POP	{r2}
+	PUSH	{r2}
 END

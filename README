@@ -15,6 +15,7 @@ Not yet supported:
 - Assign memory addresses to instructions.
 - Branching and label support.
 - Conditional flag support for instructions.
-- Limit what immediate values can be loaded using instructions such as mov.
+- Generate all label address on first pass.
+- Limit what immediate values can be loaded in operand 2 (8-bit value rotated right by an even number of bits between 0-30).
 - Shifting / rotating of immediate and register values.
 - Support for execution types.

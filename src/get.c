@@ -6,28 +6,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "asm.h"
 #include "get.h"
-#include "parser.h"
-
-extern int addre_size;
 
 /*
  * get_addr - Get the address value from an input string of form:
  * "[Rn, Rm {, LSL #n}]".
  */ 
 int
-get_addr(struct tok t)
+get_addr(char *str, int *rn, int *rm, int *lsl)
 {
-	int	addr, lsl = 0, rm, rn;
-	char	*str = t.value;
-
+	*rn = -1;
+	*rm = -1;
+	*lsl = 0;
+	
 	if (*str++ != '[') {
-		fprintf(stderr, "Invalid address, must start with a '['.\n");
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "Invalid address: %s. Must start with a '['.\n"
+			, str);
+		return -1;
 	}
-	rn = get_reg(str);
-	addr = r[rn];
+	*rn = get_reg(str);
 	while (*str != ',' && *str != ']' && *str != '\0')
 		str++;
 
@@ -36,11 +33,10 @@ get_addr(struct tok t)
 			str++;
 		} while (*str == ' ');
 		if (*str == 'r')
-			rm = get_reg(str);
+			*rm = get_reg(str);
 		else {
-			fprintf(stderr, "Invalid RM register in: %s\n",
-			t.value);
-			exit(EXIT_FAILURE);
+			fprintf(stderr, "Invalid Rm register: %s\n", str);
+			return -1;
 		}
 	
 		while (*str != ',' && *str != ']' && *str != '\0')
@@ -51,36 +47,27 @@ get_addr(struct tok t)
 				str++;
 			} while (*str == ' ');
 			if (*str == 'L')
-				lsl = get_shift(str);
+				*lsl = get_shift(str);
 			else {
 				fprintf(stderr, "Invalid LSL shift in: %s\n",
-						t.value);
-				exit(EXIT_FAILURE);
+						str);
+				return -1;
 			}
 		}
-
-		addr += r[rm] << lsl;
 	}
 
-	if (addr > ADDRSPACE_SIZE || addr < 0) {
-		fprintf(stderr, "Invalid address %d generated from: %s\n",
-			addr, t.value);
-		exit(EXIT_FAILURE);
-	}
-
-	return addr;
+	return 0;
 }
 
 /* get_expr - Get the value from an expression of the form: "=num". */
 int
-get_expr(struct tok t)
+get_expr(char *str)
 {
 	int	n = 0, i = 0;
-	char	*str = t.value;
 
 	if (str[i++] != '=') {
 		fprintf(stderr, "Invalid expression, must start with a '='.\n");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 	if (str[1] == '0' && str[2] == 'x')
 		n = get_hex(str + 3);
@@ -110,7 +97,7 @@ get_hex(char *str)
 		else {
 			fprintf(stderr, "Invalid hex character: '%c'. "
 				"Must be '0'-'9' or 'a'-'f'\n", c);
-			exit(EXIT_FAILURE);
+			return -1;
 		}
 		c = *++str;
 	} while (c != '\0');
@@ -126,7 +113,7 @@ get_imm(char *str)
 
 	if (str[0] != '#') {
 		fprintf(stderr, "Invalid immediate, must start with a '#'.\n");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	if (str[1] == '0' && str[2] == 'x')
@@ -233,38 +220,19 @@ get_int(char *str)
 			num += c - 48;
 		else {
 			fprintf(stderr, "Invalid number: %s.", str);
-			exit(EXIT_FAILURE);
+			return -1;
 		}
 		c = *++str;
 	} while (c != '\0' && num < UINT_MAX);
 
 	if (num < 0 || num > UINT_MAX) {
 		fprintf(stderr, "Invalid number: %s\n", str);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	return num;
 }
 
-
-/* get_labeladdr - Get the address of a label. */
-int
-get_labeladdr(char *str)
-{
-	int	addr = -1;
-
-	for (int i = 0; i < addre_size || addr < 0; i++) {
-		if (strcmp(addre[i].mnemonic.value, str) == 0)
-			addr = i;
-	}
-
-	if (addr == -1) {
-		fprintf(stderr, "Label '%s' not found\n.", str);
-		exit(EXIT_FAILURE);
-	}
-
-	return addr;
-}
 
 
 /* get_reg - Get the numeric value of register. */
@@ -274,11 +242,8 @@ get_reg(char *str)
 	int	n;
 	int	separator;
 
-	if (str[0] != 'r') {
-		fprintf(stderr, "String '%s' not a register. Must being with a "
-			"'r' character, not '%c'.\n", str, str[0]);
-		exit(EXIT_FAILURE);
-	}
+	if (str[0] != 'r')
+		return -1;
 	if (isdigit(str[1])) {
 		n = str[1] - '0';
 		separator = 2;
@@ -305,48 +270,49 @@ get_reg(char *str)
 }
 
 
-int *
-get_reglist (struct tok t)
+int
+get_reglist (struct tok t, int **reglist)
 {
-	int	*reglist = malloc(REGLIST);
+	*reglist = malloc(REGLIST);
 	int	reg_end;
 	int	i = 0;
 	char	*str = t.value;
+	int	*ptr = *reglist;
 
 	if (*str++ != '{') {
 		fprintf(stderr, "Invalid reglist, must start with a '{'.\n");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 	while (*str != '}' && *str != '\0' && i < REGLIST) {
-		reglist[i++] = get_reg(str);
+		ptr[i++] = get_reg(str);
 		while (isalnum(*str))
 			str++;
 		/* Get range of register values (e.g. r1-r4). */
 		if (*str == '-') {
 			str++;
 			reg_end = get_reg(str);
-			if (reg_end > reglist[i - 1]) {
-				for (int n = reglist[i - 1] + 1; n < reg_end
+			if (reg_end > ptr[i - 1]) {
+				for (int n = ptr[i - 1] + 1; n < reg_end
 					&& i < REGLIST; n++)
-					reglist[i++] = n;
+					ptr[i++] = n;
 			}
 			else {
 				fprintf(stderr, "Invalid reglist range: %s\n",
 					t.value);
-				exit(EXIT_FAILURE);
+				return -1;
 			}
 		}
 		if (*str == ',')
 			str++;
 	}
-	reglist[i] = -1;
+	ptr[i] = -1;
 
 	if (*str != '}') {
 		fprintf(stderr, "Invalid reglist, must end with a '}'.\n");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
-	return reglist;
+	return 0;
 }
 
 /* get_shift - Get the numeric value of a shift. */
@@ -357,7 +323,7 @@ get_shift(char *str)
 
 	if (str[0] != 'L' || str[1] != 'S' || str[2] != 'L') {
 		fprintf(stderr, "Invalid LSL shift: %s.\n", str);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 	str += 3;
 	while (*str == ' ')
@@ -367,13 +333,13 @@ get_shift(char *str)
 		shift = *(str + 1) - '0';
 	else {
 		fprintf(stderr, "Invalid LSL shift: %s.\n", str);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	if (shift < 0 || shift > 3) {
 		fprintf(stderr, "Shift amount '%d' is out of range (0-3).\n",
 			shift);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	return shift;
