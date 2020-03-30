@@ -81,7 +81,7 @@ rd_expr(struct inst in)
 
 
 /*
- * Syntax: OP{S}{cond} Rd, Op2
+ * Syntax: op{S}{cond} Rd, Op2
  * CMP, CMN, MOV, MOVN.
  */
 int
@@ -103,6 +103,11 @@ rd_op2(struct inst in)
 		else
 			op2 = r[op2];
 	}
+	else if (in.op2_imm == SHIFT) {
+		fprintf(stderr, "Shifting not currently supported for"
+			" instruction type: op{cond}{S} Rd, Op2.\n");
+		/* exit(EXIT_FAILURE); */
+	}
 
 	if (instruction == CMP)
 		val = r[rd] - op2;
@@ -112,6 +117,10 @@ rd_op2(struct inst in)
 		r[rd] = op2;
 	else if (instruction == MVN)
 		r[rd] = (~ op2);
+	else if (instruction == TEQ)
+		val = r[rd] ^ op2;
+	else if (instruction == TST)
+		val = r[rd] & op2;
 	else {
 		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
@@ -121,6 +130,8 @@ rd_op2(struct inst in)
 		set_flags(val, r[rd], -op2);
 	else if (instruction == CMN)
 		set_flags(val, r[rd], op2);
+	else if (instruction == TEQ || instruction == TST)
+		set_flags(val, 0, 0);
 
 	return 0;
 }
@@ -148,6 +159,11 @@ rd_rn_op2(struct inst in) {
 			op2 = r[op2] + 2;
 		else
 			op2 = r[op2];
+	}
+	else if (in.op2_imm == SHIFT) {
+		fprintf(stderr, "Shifting not currently supported for"
+			" instruction type: op{cond}{S} Rd, Rn, Op2.\n");
+		/* exit(EXIT_FAILURE); */
 	}
 
 	if (instruction == ADC) {

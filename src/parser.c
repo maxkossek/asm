@@ -162,7 +162,7 @@ expect(Token t)
 Inst
 get_inst(char *str, int *flag, int *cond)
 {
-	Inst inst = ERR;
+	Inst inst = NONE;
 	char *ptr = str;
 
 	if (str[0] == 'A') {
@@ -206,10 +206,6 @@ get_inst(char *str, int *flag, int *cond)
 	else if (str[0] == 'E') {
 		if (strncmp(str, "EOR", 3) == 0) {
 			inst = EOR;
-			ptr += 3;
-		}
-		if (strncmp(str, "ERR", 3) == 0) {
-			inst = ERR;
 			ptr += 3;
 		}
 	}
@@ -285,8 +281,18 @@ get_inst(char *str, int *flag, int *cond)
 			ptr += 3;
 		}
 	}
+	else if (str[0] == 'T') {
+		if (strncmp(str, "TEQ", 3) == 0) {
+			inst = TEQ;
+			ptr += 3;
+		}
+		else if (strncmp(str, "TST", 3) == 0) {
+			inst = TST;
+			ptr += 3;
+		}
+	}
 
-	if (get_cond(ptr, flag, cond) == -1 || inst == ERR) {
+	if (get_cond(ptr, flag, cond) == -1 || inst == NONE) {
 		fprintf(stderr, "Invalid instruction mnemonic: %s\n", str);
 		exit(EXIT_FAILURE);
 	}
@@ -416,10 +422,18 @@ parse_instruction()
 		else if (t.token == ID) {
 			i.type = I_RD_RN_OP2;
 			i.op2 = get_reg(t.value);
-			if (i.op2 < 0)
-				fprintf(stderr, "Invalid register: %s.\n",
-					t.value);
 			i.op2_imm = REGISTER;
+			if (i.op2 < 0) {
+				i.type = I_RD_OP2;
+				i.op2_imm = SHIFT;
+				strlcpy(buf, t.value, sizeof(buf));
+				t = get_token();
+				strlcat(buf, t.value, sizeof(buf));
+				i.shift = get_shift(buf, &i.shift,
+					(int *) &i.shift_type, &i.shift_imm);
+				if (i.shift < 0)
+					syntax_error(t.token);
+			}
 		}
 		else
 			syntax_error(t.token);
@@ -435,6 +449,7 @@ parse_instruction()
 
 			if (i.op3 < 0) {
 				i.type = I_RD_RN_OP2;
+				i.op2_imm = SHIFT;
 				strlcpy(buf, t.value, sizeof(buf));
 				t = get_token();
 				strlcat(buf, t.value, sizeof(buf));

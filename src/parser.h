@@ -5,6 +5,7 @@
 
 #define REGISTER 0
 #define IMMEDIATE 1
+#define SHIFT 2
 #define MAXINST 200
 #define MAXREG 16
 
@@ -21,13 +22,15 @@ typedef enum {
 	ADC, ADD, AND,
 	B, BIC, BL,
 	CMN, CMP,
-	EOR, ERR,
+	EOR,
 	LDR,
 	MLA, MLS, MOV, MUL, MVN,
+	NONE,
 	ORR, ORN,
 	POP, PUSH,
 	RSB, RSC,
-	SBC, STR, SUB
+	SBC, STR, SUB,
+	TEQ, TST,
 } Inst;
 
 typedef enum {

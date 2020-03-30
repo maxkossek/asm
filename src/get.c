@@ -273,7 +273,7 @@ get_reg(char *str)
 	if (str[separator] != '\0' && str[separator] != ','
 		&& str[separator] != '-' && str[separator] != '}'
 		&& str[separator] != ']') {
-		fprintf(stderr, "Invalid register: %s\n", str);
+		fprintf(stderr, "Invalid register: %s.\n", str);
 		exit(EXIT_FAILURE);
 	}
 		
@@ -335,30 +335,64 @@ get_reglist (char *str, int **reglist)
 int
 get_shift(char *str, int *shift, int *type, int *shift_imm)
 {
-	*type = S_NONE;
+	char *ptr = str;
 
-	if (strncmp(str, "LSL", 3) == 0) {
+	*type = S_NONE;
+	if (strncmp(str, "ASR", 3) == 0)
+		*type = S_ASR;
+	else if (strncmp(str, "LSL", 3) == 0)
 		*type = S_LSL;
-		str += 3;
+	else if (strncmp(str, "LSR", 3) == 0)
+		*type = S_LSR;
+	else if (strncmp(str, "ROR", 3) == 0)
+		*type = S_ROR;
+	else if (strncmp(str, "RRX", 3) == 0) {
+		*type = S_RRX;
+		*shift = 1;
 	}
 	else {
 		fprintf(stderr, "Invalid shift: %s.\n", str);
 		return -1;
 	}
 
-	while (*str == ' ')
-		str++;
+	ptr += 3;
+	while (*ptr == ' ')
+		ptr++;
 
-	if (*str == '#' && isdigit(*(str + 1)) && *(str + 2) == ']') {
-		*shift = *(str + 1) - '0';
+	if (*ptr == '#' && *type != S_RRX) {
 		*shift_imm = IMMEDIATE;
+		*shift = get_imm(ptr);
 	}
-	else if (*str == 'r') {
-		*shift = get_reg(str);
+	else if (*ptr == 'r' && *type != S_RRX) {
 		*shift_imm = REGISTER;
+		*shift = get_reg(ptr);
 	}
 	else {
-		fprintf(stderr, "Invalid LSL shift: %s.\n", str);
+		fprintf(stderr, "Invalid shift: %s.\n", str);
+		return -1;
+	}
+
+	if ((*type == S_ASR || *type == S_LSR) &&
+		(*shift < 1 || *shift > 32)) {
+		fprintf(stderr, "Invalid shift (out of range 1-32): %s.\n",
+			str);
+		return -1;
+	}
+	else if (*type == S_LSL && (*shift < 0 || *shift > 31)) {
+		fprintf(stderr, "Invalid LSL shift (out of range 0-31): %s.\n",
+			str);
+		return -1;
+	}
+	else if (*type == S_ROR && (*shift < 1 || *shift > 31)) {
+		fprintf(stderr, "Invalid ROR shift (out of range 0-31): %s.\n",
+			str);
+		return -1;
+	}
+
+	while (isalnum(*++ptr))
+		;
+	if (*ptr != '\0' && *ptr != ']') {
+		fprintf(stderr, "Invalid shift: %s.\n", str);
 		return -1;
 	}
 

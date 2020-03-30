@@ -1,0 +1,5 @@
+@ Expected: r[APSR] = ZFLAG
+ENTRY
+	MOV	r0, #0
+	TEQ	r0, #0
+END

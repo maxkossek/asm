@@ -1,0 +1,6 @@
+ENTRY
+	RSCLES	r0,r5,r0,LSL r4
+	TSTNE	r1, r5, ASR r1
+	CMPGT	r13,r7,LSL #2
+	SUB	r11,r12,r3,ASR #5
+END
