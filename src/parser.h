@@ -7,7 +7,6 @@
 #define IMMEDIATE 1
 #define MAXINST 200
 #define MAXREG 16
-#define MAXOP 4
 
 typedef enum {
 	I_LABEL, I_NAME, I_NONE, I_RD_EXPR, I_RD_OP2,
@@ -65,6 +64,7 @@ struct inst	addre[MAXINST];
 static int	curr = 0;
 static int	line_num = 0;
 
+int		check_cond(Cond cond);
 int		execute();
 struct tok	expect(Token t);
 Inst		get_inst(char *str, int *flag, int *cond);
@@ -74,5 +74,6 @@ struct inst	parse_instruction();
 struct inst	parse_label();
 struct tok	peek();
 void		syntax_error(Token t);
+void		unget_token();
 
 #endif

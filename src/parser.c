@@ -13,11 +13,101 @@
 
 int	addre_size = 0;
 
-void
-unget_token()
+/*
+ * check_cond - Check the condition of the instruction against the current 
+ * state of the flags. Return 0 if the instruction is to be executed, else -1.
+ */
+int
+check_cond(Cond cond)
 {
-	curr--;
+	int n_curr, z_curr, c_curr, v_curr;
+	n_curr = r[APSR] & NFLAG;
+	z_curr = r[APSR] & ZFLAG;
+	c_curr = r[APSR] & CFLAG;
+	v_curr = r[APSR] & VFLAG;
+
+	switch (cond) {
+	case AL:
+		if (cond == AL)
+			return 0;
+		break;
+	case CC:
+		if (c_curr != CFLAG)
+			return 0;
+		break;
+	case CS:
+		if (c_curr == CFLAG)
+			return 0;
+		break;
+	case EQ:
+		if (z_curr == ZFLAG)
+			return 0;
+		break;
+	case GE:
+		if ((z_curr == ZFLAG && v_curr == VFLAG)
+			|| (z_curr != ZFLAG && v_curr != VFLAG))
+			return 0;
+		break;
+	case GT:
+		if (z_curr != ZFLAG && ((z_curr == ZFLAG && v_curr == VFLAG)
+			|| (z_curr != ZFLAG && v_curr != VFLAG)))
+			return 0;
+		break;
+	case HI:
+		if (c_curr == CFLAG && z_curr != ZFLAG)
+			return 0;
+		break;
+	case HS:
+		if (c_curr == CFLAG)
+			return 0;
+		break;
+	case LE:
+		if (z_curr == ZFLAG && ((n_curr != NFLAG && v_curr == VFLAG)
+			|| (n_curr == NFLAG && v_curr != VFLAG)))
+			return 0;
+		break;
+	case LO:
+		if (c_curr != CFLAG)
+			return 0;
+		break;
+	case LS:
+		if (c_curr == CFLAG || z_curr == ZFLAG)
+			return 0;
+		break;
+	case LT:
+		if ((n_curr != NFLAG && v_curr == VFLAG)
+			|| (n_curr == NFLAG && v_curr != VFLAG))
+			return 0;
+		break;
+	case MI:
+		if (n_curr == NFLAG)
+			return 0;
+		break;
+	case NE:
+		if (z_curr != ZFLAG)
+			return 0;
+		break;
+	case PL:
+		if (n_curr != NFLAG)
+			return 0;
+		break;
+	case VC:
+		if (v_curr != VFLAG)
+			return 0;
+		break;
+	case VS:
+		if (v_curr == VFLAG)
+			return 0;
+		break;
+	default:
+		fprintf(stderr, "Unknown condition code.\n");
+		exit(EXIT_FAILURE);
+	}
+	
+
+	return -1;
 }
+
 
 int
 execute()
@@ -29,8 +119,8 @@ execute()
 	for ( ; r[PC] < addre_size; r[PC]++) {
 		pc = r[PC];
 		type = addre[pc].type;
-
-		/*** TODO: CONDITIONAL EXECUTION BASED ON COND FIELD. ***/
+		if (check_cond(addre[pc].cond) < 0)
+			continue;
 
 		if (type == I_NAME)
 			;
@@ -392,3 +482,11 @@ syntax_error(Token t)
 		line_num, t);
 	exit(EXIT_FAILURE);
 }
+
+
+void
+unget_token()
+{
+	curr--;
+}
+

@@ -7,7 +7,7 @@ Currently supported:
 - Arithemtic operators.
 - Branch and branch with link instructions.
 - Bitwise operators.
-- Conditional flags.
+- Conditional flags and execution of instructions.
 - Data movement instructions.
 - Load / store instructions without shifts.
 - Push / Pop instructions.
@@ -15,7 +15,6 @@ Currently supported:
 
 To be completed:
 - Add shifting support for "op{cond}{S} Rd, Rn, Op2" instruction format.
-- Skip instruction execution based on optional conditional flags.
 - Generate label addresses on first parsing pass.
 - Limit what immediate values can be loaded in operand 2 (8-bit value rotated right by an even number of bits between 0-30).
 - Support for different execution types.

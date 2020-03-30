@@ -1,0 +1,10 @@
+@ expected: r0 = 1, r1 = 120
+ENTRY
+	MOV	r1, #5
+	MOV	r0, r1
+loop:
+	SUB	r0, r0, #1
+	MUL	r1, r1, r0
+	CMP	r0, #1
+	BNE	loop
+END

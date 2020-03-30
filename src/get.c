@@ -41,31 +41,31 @@ get_addr(char *str, int *rn, int *rm, int *shift, int *shift_type,
 			fprintf(stderr, "Invalid Rm register: %s\n", str);
 			return -1;
 		}
+	}
 	
-		while (*str != ',' && *str != ']' && *str != '\0')
-			str++;
+	while (*str != ',' && *str != ']' && *str != '\0')
+		str++;
 
-		if (*str == ',') {
-			do {
-				str++;
-			} while (*str == ' ');
-			if (*str == 'L') {
-				if (get_shift(str, shift, shift_type,
-					shift_imm) < 0 ||
-					*shift_type != S_LSL) {
-					return -1;
-				}
-				if (*shift < 0 || *shift > 3) {
-					fprintf(stderr, "Shift amount '%d' is "
-					"out of range (0-3).\n", *shift);
-					return -1;
-				}
-			}
-			else {
-				fprintf(stderr, "Invalid LSL shift in: %s\n",
-						str);
+	if (*str == ',') {
+		do {
+			str++;
+		} while (*str == ' ');
+		if (*str == 'L') {
+			if (get_shift(str, shift, shift_type,
+				shift_imm) < 0 ||
+				*shift_type != S_LSL) {
 				return -1;
 			}
+			if (*shift < 0 || *shift > 3) {
+				fprintf(stderr, "Shift amount '%d' is "
+				"out of range (0-3).\n", *shift);
+				return -1;
+			}
+		}
+		else {
+			fprintf(stderr, "Invalid LSL shift in: %s\n",
+					str);
+			return -1;
 		}
 	}
 

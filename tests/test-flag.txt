@@ -3,4 +3,6 @@ ENTRY
 	LDR	r1, =0xffffffff
 	LDR	r2, =0x00000001
 	ADDS	r0, r1, r2
+@	RSCLES	r0,r5,r0,LSL r4
+@	CMPGT	r13,r7,LSL #2
 END
