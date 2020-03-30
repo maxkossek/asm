@@ -7,17 +7,20 @@
 #include <string.h>
 
 #include "get.h"
+#include "parser.h"
 
 /*
  * get_addr - Get the address value from an input string of form:
  * "[Rn, Rm {, LSL #n}]".
  */ 
 int
-get_addr(char *str, int *rn, int *rm, int *lsl)
+get_addr(char *str, int *rn, int *rm, int *shift, int *shift_type,
+		int *shift_imm)
 {
 	*rn = -1;
 	*rm = -1;
-	*lsl = 0;
+	*shift = 0;
+	*shift_type = S_NONE;
 	
 	if (*str++ != '[') {
 		fprintf(stderr, "Invalid address: %s. Must start with a '['.\n"
@@ -46,8 +49,18 @@ get_addr(char *str, int *rn, int *rm, int *lsl)
 			do {
 				str++;
 			} while (*str == ' ');
-			if (*str == 'L')
-				*lsl = get_shift(str);
+			if (*str == 'L') {
+				if (get_shift(str, shift, shift_type,
+					shift_imm) < 0 ||
+					*shift_type != S_LSL) {
+					return -1;
+				}
+				if (*shift < 0 || *shift > 3) {
+					fprintf(stderr, "Shift amount '%d' is "
+					"out of range (0-3).\n", *shift);
+					return -1;
+				}
+			}
 			else {
 				fprintf(stderr, "Invalid LSL shift in: %s\n",
 						str);
@@ -55,6 +68,91 @@ get_addr(char *str, int *rn, int *rm, int *lsl)
 			}
 		}
 	}
+
+	return 0;
+}
+
+/* get_cond - Get the setflag and condition suffix from an instruction. */
+int
+get_cond(char *str, int *flag, int *cond)
+{
+	/* No suffix. */
+	if (*str == '\0')
+		return 0;
+	/* Set flag. */
+	else if (*str == 'S') {
+		*flag = 1;
+		str++;
+	}
+
+	if (*str == '\0')
+		return 0;
+	else if (*str == 'A') {
+		if (strcmp(str, "AL") == 0)
+			*cond = AL;
+	}
+	else if (*str == 'C') {
+		if (strcmp(str, "CC") == 0)
+			*cond = CC;
+		else if (strcmp(str, "CS") == 0)
+			*cond = CS;
+	}
+	else if (*str == 'E') {
+		if (strcmp(str, "EQ") == 0)
+			*cond = EQ;
+	}
+	else if (*str == 'G') {
+		if (strcmp(str, "GE") == 0)
+			*cond = GE;
+		else if (strcmp(str, "GT") == 0)
+			*cond = GT;
+	}
+	else if (*str == 'H') {
+		if (strcmp(str, "HI") == 0)
+			*cond = HI;
+		else if (strcmp(str, "HS") == 0)
+			*cond = HS;
+	}
+	else if (*str == 'L') {
+		if (strcmp(str, "LO") == 0)
+			*cond = LO;
+		else if (strcmp(str, "LE") == 0)
+			*cond = LE;
+		else if (strcmp(str, "LS") == 0)
+			*cond = LS;
+		else if (strcmp(str, "LT") == 0)
+			*cond = LT;
+	}
+	else if (*str == 'M') {
+		if (strcmp(str, "MI") == 0)
+			*cond = MI;
+	}
+	else if (*str == 'N') {
+		if (strcmp(str, "NE") == 0)
+			*cond = NE;
+	}
+	else if (*str == 'P') {
+		if (strcmp(str, "PL") == 0)
+			*cond = PL;
+	}
+	else if (*str == 'V') {
+		if (strcmp(str, "VC") == 0)
+			*cond = VC;
+		else if (strcmp(str, "VS") == 0)
+			*cond = VS;
+	}
+	else
+		return -1;
+
+	str += 2;
+	/* Set flag. */
+	if (*str == 'S') {
+		*flag = 1;
+		str++;
+	}
+
+	if (*str != '\0')
+		return -1;
 
 	return 0;
 }
@@ -124,87 +222,6 @@ get_imm(char *str)
 	return n;
 }
 
-/* get_inst - Find the instruction given an input string. */
-Inst
-get_inst(struct tok t)
-{
-	Inst inst = ERR;
-	char *str = t.value;
-
-	if (t.token != ID) {
-		fprintf(stderr, "Can't get instruction from a non-ID token\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (str[0] == 'A') {
-		if (strcmp(str, "ADC") == 0)
-			return ADC;
-		else if (strcmp(str, "ADD") == 0)
-			return ADD;
-		else if (strcmp(str, "AND") == 0)
-			return AND;
-	}
-	else if (str[0] == 'B') {
-		if (strcmp(str, "B") == 0)
-			return B;
-		else if (strcmp(str, "BL") == 0)
-			return BL;
-		else if (strcmp(str, "BIC") == 0)
-			return BIC;
-	}
-	else if (str[0] == 'C') {
-		if (strcmp(str, "CMP") == 0)
-			return CMP;
-		if (strcmp(str, "CMN") == 0)
-			return CMN;
-	}
-	else if (str[0] == 'E') {
-		if (strcmp(str, "EOR") == 0)
-			return EOR;
-	}
-	else if (str[0] == 'L') {
-		if (strcmp(str, "LDR") == 0)
-			return LDR;
-	}
-	else if (str[0] == 'M') {
-		if (strcmp(str, "MLA") == 0)
-			return MLA;
-		if (strcmp(str, "MLS") == 0)
-			return MLS;
-		else if (strcmp(str, "MOV") == 0)
-			return MOV;
-		else if (strcmp(str, "MUL") == 0)
-			return MUL;
-		else if (strcmp(str, "MVN") == 0)
-			return MVN;
-	}
-	else if (str[0] == 'O') {
-		if (strcmp(str, "ORN") == 0)
-			return ORN;
-		if (strcmp(str, "ORR") == 0)
-			return ORR;
-	}
-	else if (str[0] == 'P') {
-		if (strcmp(str, "PUSH") == 0)
-			return PUSH;
-		else if (strcmp(str, "POP") == 0)
-			return POP;
-	}
-	else if (str[0] == 'S') {
-		if (strcmp(str, "SUB") == 0)
-			return SUB;
-		if (strcmp(str, "STR") == 0)
-			return STR;
-	}
-
-	if (inst == ERR) {
-		fprintf(stderr, "Invalid instruction opcode: %s\n", str);
-		exit(EXIT_FAILURE);
-	}
-
-	return inst;
-}
-
 /* get_int - Get the integer value from an input string. */
 int
 get_int(char *str)
@@ -271,12 +288,11 @@ get_reg(char *str)
 
 
 int
-get_reglist (struct tok t, int **reglist)
+get_reglist (char *str, int **reglist)
 {
 	*reglist = malloc(REGLIST);
 	int	reg_end;
 	int	i = 0;
-	char	*str = t.value;
 	int	*ptr = *reglist;
 
 	if (*str++ != '{') {
@@ -298,7 +314,7 @@ get_reglist (struct tok t, int **reglist)
 			}
 			else {
 				fprintf(stderr, "Invalid reglist range: %s\n",
-					t.value);
+					str);
 				return -1;
 			}
 		}
@@ -317,30 +333,34 @@ get_reglist (struct tok t, int **reglist)
 
 /* get_shift - Get the numeric value of a shift. */
 int
-get_shift(char *str)
+get_shift(char *str, int *shift, int *type, int *shift_imm)
 {
-	int	shift = -1;
+	*type = S_NONE;
 
-	if (str[0] != 'L' || str[1] != 'S' || str[2] != 'L') {
-		fprintf(stderr, "Invalid LSL shift: %s.\n", str);
+	if (strncmp(str, "LSL", 3) == 0) {
+		*type = S_LSL;
+		str += 3;
+	}
+	else {
+		fprintf(stderr, "Invalid shift: %s.\n", str);
 		return -1;
 	}
-	str += 3;
+
 	while (*str == ' ')
 		str++;
 
-	if (*str == '#' && isdigit(*(str + 1)) && *(str + 2) == ']')
-		shift = *(str + 1) - '0';
+	if (*str == '#' && isdigit(*(str + 1)) && *(str + 2) == ']') {
+		*shift = *(str + 1) - '0';
+		*shift_imm = IMMEDIATE;
+	}
+	else if (*str == 'r') {
+		*shift = get_reg(str);
+		*shift_imm = REGISTER;
+	}
 	else {
 		fprintf(stderr, "Invalid LSL shift: %s.\n", str);
 		return -1;
 	}
 
-	if (shift < 0 || shift > 3) {
-		fprintf(stderr, "Shift amount '%d' is out of range (0-3).\n",
-			shift);
-		return -1;
-	}
-
-	return shift;
+	return 0;
 }

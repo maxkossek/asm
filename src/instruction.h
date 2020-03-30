@@ -14,5 +14,6 @@ int	rd_rn_op2(struct inst in);
 int	rd_rn_rm_ra(struct inst in);
 int	reglist(struct inst in);
 int	rt_addr(struct inst in);
+int	set_flags(int result, int op1, int op2);
 
 #endif

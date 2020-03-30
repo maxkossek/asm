@@ -93,11 +93,15 @@ rd_op2(struct inst in)
 	instruction = in.mnemonic;
 	rd = in.dest;
 
-	if (in.imm == OP2_IMM)
+	if (in.op2_imm == IMMEDIATE)
 		op2 = in.op2;
-	else if (in.imm == OP2_REG) {
+	else if (in.op2_imm == REGISTER) {
 		op2 = in.op2;
-		op2 = r[op2];
+		/* Value of op2 is PC+8 if r15 is used. */
+		if (op2 == PC)
+			op2 = r[op2] + 2;
+		else
+			op2 = r[op2];
 	}
 
 	if (instruction == CMP)
@@ -113,15 +117,10 @@ rd_op2(struct inst in)
 		exit(EXIT_FAILURE);
 	}
 
-	if (instruction == CMP || instruction == CMN) {
-		/* Set Flags: N, Z, C, V. */
-		/*** TODO: Carry and overflow flags. */
-		r[APSR] = 0;
-		if (val < 0)
-			r[APSR] = r[APSR] | NFLAG;
-		else if (val == 0)
-			r[APSR] = r[APSR] | ZFLAG;
-	}
+	if (instruction == CMP)
+		set_flags(val, r[rd], -op2);
+	else if (instruction == CMN)
+		set_flags(val, r[rd], op2);
 
 	return 0;
 }
@@ -140,36 +139,67 @@ rd_rn_op2(struct inst in) {
 	rd = in.dest;
 	rn = in.op1;
 
-	if (in.imm == OP2_IMM)
+	if (in.op2_imm == IMMEDIATE)
 		op2 = in.op2;
-	else if (in.imm == OP2_REG) {
+	else if (in.op2_imm == REGISTER) {
 		op2 = in.op2;
-		op2 = r[op2];
+		/* Value of op2 is PC+8 if r15 is used. */
+		if (op2 == PC)
+			op2 = r[op2] + 2;
+		else
+			op2 = r[op2];
 	}
 
-	if (instruction == ADD)
+	if (instruction == ADC) {
+		if ((r[APSR] & CFLAG) == CFLAG)
+			op2++;
+		r[rd] = r[rn] + op2;
+	}
+	else if (instruction == ADD)
 		r[rd] = r[rn] + op2;
 	else if (instruction == AND)
 		r[rd] = r[rn] & op2;
-	else if (instruction == BIC)
-		r[rd] = r[rn] & (~op2);
+	else if (instruction == BIC) {
+		op2 = ~op2;
+		r[rd] = r[rn] & op2;
+	}
 	else if (instruction == EOR)
 		r[rd] = r[rn] ^ op2;
 	else if (instruction == MUL)
 		r[rd] = r[rn] * op2;
-	else if (instruction == ORN)
-		r[rd] = r[rn] | (~op2);
+	else if (instruction == ORN) {
+		op2 = ~op2;
+		r[rd] = r[rn] | op2;
+	}
 	else if (instruction == ORR)
 		r[rd] = r[rn] | op2;
 	else if (instruction == RSB)
 		r[rd] = op2 - r[rn];
+	else if (instruction == RSC) {
+		if ((r[APSR] & CFLAG) != CFLAG)
+			op2--;
+		r[rd] = op2 - r[rn];
+	}
+	else if (instruction == SBC) {
+		if ((r[APSR] & CFLAG) != CFLAG)
+			op2--;
+		r[rd] = op2 - r[rn];
+	}
 	else if (instruction == SUB)
 		r[rd] = r[rn] - op2;
 	else {
 		fprintf(stderr, "Invalid Rd, Rn, Op2 instruction.\n");
 		exit(EXIT_FAILURE);
 	}
-	/*** TODO: HANDLE CARRY INSTRUCTION ADC, SBC, RSC. ***/
+
+	if (in.setflag == 1) {
+		if (instruction == SUB || instruction == SBC)
+			set_flags(r[rd], r[rn], -op2);
+		else if (instruction == RSB || instruction == RSC)
+			set_flags(r[rd], op2, -r[rn]);
+		else
+			set_flags(r[rd], r[rn], op2);
+	}
 
 	return 0;
 }
@@ -197,6 +227,9 @@ rd_rn_rm_ra(struct inst in) {
 		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
 	}
+
+	if (in.setflag == 1 && instruction == MLA)
+		set_flags(r[rd], r[rn] * r[rm], r[ra]);
 
 	return 0;
 }
@@ -250,7 +283,14 @@ rt_addr(struct inst in)
 
 	instruction = in.mnemonic;
 	rt = in.dest;
-	addr = r[in.op1] + (r[in.op2] << in.lsl);
+	if (in.shift_type == S_LSL)
+		addr = r[in.op1] + (r[in.op2] << in.shift);
+	else if (in.shift_type == S_NONE)
+		addr = r[in.op1] + r[in.op2];
+	else {
+		fprintf(stderr, "Invalid shift type\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (addr > ADDRSPACE_SIZE || addr < 0) {
 		fprintf(stderr, "Invalid address %d\n", addr);
@@ -265,6 +305,33 @@ rt_addr(struct inst in)
 		fprintf(stderr, "Invalid instruction opcode.\n");
 		exit(EXIT_FAILURE);
 	}
+
+	return 0;
+}
+
+
+/* set_flags - Set Flags: N, Z, C, V. */
+int
+set_flags(int result, int op1, int op2)
+{
+	unsigned uop1, uop2, uresult, carry;
+	uop1 = (unsigned int) op1;
+	uop2 = (unsigned int) op2;
+	uresult = uop1 + uop2;
+	carry = uresult < uop1;
+
+	/*** TODO: Carry and overflow flags. */
+	r[APSR] = 0;
+	if (result < 0)
+		r[APSR] = r[APSR] | NFLAG;
+	if (result == 0)
+		r[APSR] = r[APSR] | ZFLAG;
+	if (carry > 0)
+		r[APSR] = r[APSR] | CFLAG;
+	if (op1 > 0 && op2 > 0 && result < 0)
+		r[APSR] = r[APSR] | ZFLAG;
+	else if (op1 < 0 && op2 < 0 && result > 0)
+		r[APSR] = r[APSR] | ZFLAG;
 
 	return 0;
 }

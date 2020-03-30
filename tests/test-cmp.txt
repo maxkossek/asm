@@ -1,4 +1,4 @@
-@ Expected r0 = 5, ASPR = 11 on MSB
+@ Expected r0 = 5, ASPR = 40000000 on MSB
 ENTRY
 	MOV	r0, #5
 	CMP	r0, #5

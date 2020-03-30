@@ -3,10 +3,11 @@
 
 /* APSR Flags: r[16]: [N, Z, C, V]. */
 #define NFLAG ~(~0u >> 1)
-#define ZFLAG ~(~0u >> 2)
-#define CFLAG ~(~0u >> 4)
-#define VFLAG ~(~0u >> 8)
-#define UFLAG ~(~0u >> 16)
+#define ZFLAG (~(~0u >> 1)) >> 1
+#define CFLAG (~(~0u >> 1)) >> 2
+#define VFLAG (~(~0u >> 1)) >> 3
+#define UFLAG (~(~0u >> 1)) >> 4
+
 #define ADDRSPACE_SIZE 1000
 
 /* Special registers. */

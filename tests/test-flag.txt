@@ -1,0 +1,6 @@
+@ Expected: APSR	= 0x60000000
+ENTRY
+	LDR	r1, =0xffffffff
+	LDR	r2, =0x00000001
+	ADDS	r0, r1, r2
+END
