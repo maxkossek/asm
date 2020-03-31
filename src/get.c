@@ -7,20 +7,19 @@
 #include <string.h>
 
 #include "get.h"
-#include "parser.h"
 
 /*
  * get_addr - Get the address value from an input string of form:
  * "[Rn, Rm {, LSL #n}]".
  */ 
 int
-get_addr(char *str, int *rn, int *rm, int *shift, int *shift_type,
-		int *shift_imm)
+get_addr(char *str, int *rn, int *rm, int *shift,
+	shift_method *shift_method, val_type *shift_type)
 {
 	*rn = -1;
 	*rm = -1;
 	*shift = 0;
-	*shift_type = S_NONE;
+	*shift_method = S_NONE;
 	
 	if (*str++ != '[') {
 		fprintf(stderr, "Invalid address: %s. Must start with a '['.\n"
@@ -51,9 +50,11 @@ get_addr(char *str, int *rn, int *rm, int *shift, int *shift_type,
 			str++;
 		} while (*str == ' ');
 		if (*str == 'L') {
-			if (get_shift(str, shift, shift_type,
-				shift_imm) < 0 ||
-				*shift_type != S_LSL) {
+			if (get_shift(str, shift, shift_method,
+				shift_type) < 0 ||
+				*shift_method != S_LSL) {
+				fprintf(stderr, "Invalid non-LSL shift in"
+					" addr.\n");
 				return -1;
 			}
 			if (*shift < 0 || *shift > 3) {
@@ -240,7 +241,7 @@ get_int(char *str)
 			return -1;
 		}
 		c = *++str;
-	} while (c != '\0' && num < UINT_MAX);
+	} while (c != '\0' && c != ']' && num < UINT_MAX);
 
 	if (num < 0 || num > UINT_MAX) {
 		fprintf(stderr, "Invalid number: %s\n", str);
@@ -331,24 +332,25 @@ get_reglist (char *str, int **reglist)
 	return 0;
 }
 
-/* get_shift - Get the numeric value of a shift. */
+/* get_shift_amount - Get the numeric value of a shift. */
 int
-get_shift(char *str, int *shift, int *type, int *shift_imm)
+get_shift(char *str, int *shift_amount, shift_method *shift_method,
+		val_type *shift_type)
 {
 	char *ptr = str;
 
-	*type = S_NONE;
+	*shift_method = S_NONE;
 	if (strncmp(str, "ASR", 3) == 0)
-		*type = S_ASR;
+		*shift_method = S_ASR;
 	else if (strncmp(str, "LSL", 3) == 0)
-		*type = S_LSL;
+		*shift_method = S_LSL;
 	else if (strncmp(str, "LSR", 3) == 0)
-		*type = S_LSR;
+		*shift_method = S_LSR;
 	else if (strncmp(str, "ROR", 3) == 0)
-		*type = S_ROR;
+		*shift_method = S_ROR;
 	else if (strncmp(str, "RRX", 3) == 0) {
-		*type = S_RRX;
-		*shift = 1;
+		*shift_method = S_RRX;
+		*shift_amount = 1;
 	}
 	else {
 		fprintf(stderr, "Invalid shift: %s.\n", str);
@@ -359,32 +361,32 @@ get_shift(char *str, int *shift, int *type, int *shift_imm)
 	while (*ptr == ' ')
 		ptr++;
 
-	if (*ptr == '#' && *type != S_RRX) {
-		*shift_imm = IMMEDIATE;
-		*shift = get_imm(ptr);
+	if (*ptr == '#' && *shift_method != S_RRX) {
+		*shift_type = V_IMM;
+		*shift_amount = get_imm(ptr);
 	}
-	else if (*ptr == 'r' && *type != S_RRX) {
-		*shift_imm = REGISTER;
-		*shift = get_reg(ptr);
+	else if (*ptr == 'r' && *shift_method != S_RRX) {
+		*shift_type = V_REG;
+		*shift_amount = get_reg(ptr);
 	}
 	else {
 		fprintf(stderr, "Invalid shift: %s.\n", str);
 		return -1;
 	}
 
-	if ((*type == S_ASR || *type == S_LSR) &&
-		(*shift < 1 || *shift > 32)) {
-		fprintf(stderr, "Invalid shift (out of range 1-32): %s.\n",
+	if ((*shift_method == S_ASR || *shift_method == S_LSR) &&
+		(*shift_amount < 1 || *shift_amount > 32)) {
+		fprintf(stderr, "Invalid shift_amount (out of range 1-32): %s.\n",
 			str);
 		return -1;
 	}
-	else if (*type == S_LSL && (*shift < 0 || *shift > 31)) {
-		fprintf(stderr, "Invalid LSL shift (out of range 0-31): %s.\n",
+	else if (*shift_method == S_LSL && (*shift_amount < 0 || *shift_amount > 31)) {
+		fprintf(stderr, "Invalid LSL shift_amount (out of range 0-31): %s.\n",
 			str);
 		return -1;
 	}
-	else if (*type == S_ROR && (*shift < 1 || *shift > 31)) {
-		fprintf(stderr, "Invalid ROR shift (out of range 0-31): %s.\n",
+	else if (*shift_method == S_ROR && (*shift_amount < 1 || *shift_amount > 31)) {
+		fprintf(stderr, "Invalid ROR shift_amount (out of range 0-31): %s.\n",
 			str);
 		return -1;
 	}

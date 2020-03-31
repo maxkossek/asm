@@ -18,7 +18,7 @@ int	addre_size = 0;
  * state of the flags. Return 0 if the instruction is to be executed, else -1.
  */
 int
-check_cond(Cond cond)
+check_cond(cond cond)
 {
 	int n_curr, z_curr, c_curr, v_curr;
 	n_curr = r[APSR] & NFLAG;
@@ -112,8 +112,8 @@ check_cond(Cond cond)
 int
 execute()
 {
-	int	pc;
-	Type	type;
+	int		pc;
+	inst_type	type;
 	r[PC] = 0;
 
 	for ( ; r[PC] < addre_size; r[PC]++) {
@@ -159,10 +159,10 @@ expect(Token t)
 }
 
 /* get_inst - Find the instruction given an input string. */
-Inst
+inst
 get_inst(char *str, int *flag, int *cond)
 {
-	Inst inst = NONE;
+	inst inst = NONE;
 	char *ptr = str;
 
 	if (str[0] == 'A') {
@@ -344,7 +344,7 @@ parse_instruction()
 	i.cond = AL;
 	i.setflag = 0;
 	i.type = I_NONE;
-	i.op2_imm = REGISTER;
+	i.op2_type = V_REG;
 
 	t = expect(TAB);
 	t = expect(ID);
@@ -380,7 +380,7 @@ parse_instruction()
 				fprintf(stderr, "Invalid immediate: %s.\n",
 					t.value);
 			i.op2 = i.op1;
-			i.op2_imm = IMMEDIATE;
+			i.op2_type = V_IMM;
 		}
 		else if (t.token == ID) {
 			i.type = I_RD_OP2;
@@ -389,7 +389,7 @@ parse_instruction()
 				fprintf(stderr, "Invalid register: %s.\n",
 					t.value);
 			i.op2 = i.op1;
-			i.op2_imm = REGISTER;
+			i.op2_type = V_REG;
 		}
 		else if (t.token == EXPR) {
 			i.type = I_RD_EXPR;
@@ -397,9 +397,9 @@ parse_instruction()
 		}
 		else if (t.token == ADDR) {
 			i.type = I_RT_ADDR;
-			i.shift_type = S_LSL;
+			i.shift_method = S_LSL;
 			if (get_addr(t.value, &i.op1, &i.op2, &i.shift,
-				(int *) &i.shift_type, &i.shift_imm) < 0)
+				&i.shift_method, &i.shift_type) < 0)
 				fprintf(stderr, "Invalid expression: %s.\n",
 					t.value);
 		}
@@ -417,20 +417,20 @@ parse_instruction()
 			if (i.op2 < 0)
 				fprintf(stderr, "Invalid immediate: %s.\n",
 					t.value);
-			i.op2_imm = IMMEDIATE;
+			i.op2_type = V_IMM;
 		}
 		else if (t.token == ID) {
 			i.type = I_RD_RN_OP2;
 			i.op2 = get_reg(t.value);
-			i.op2_imm = REGISTER;
+			i.op2_type = V_REG;
 			if (i.op2 < 0) {
 				i.type = I_RD_OP2;
-				i.op2_imm = SHIFT;
+				i.op2_type = V_SHIFT;
 				strlcpy(buf, t.value, sizeof(buf));
 				t = get_token();
 				strlcat(buf, t.value, sizeof(buf));
 				i.shift = get_shift(buf, &i.shift,
-					(int *) &i.shift_type, &i.shift_imm);
+					&i.shift_method, &i.shift_type);
 				if (i.shift < 0)
 					syntax_error(t.token);
 			}
@@ -449,12 +449,12 @@ parse_instruction()
 
 			if (i.op3 < 0) {
 				i.type = I_RD_RN_OP2;
-				i.op2_imm = SHIFT;
+				i.op2_type = V_SHIFT;
 				strlcpy(buf, t.value, sizeof(buf));
 				t = get_token();
 				strlcat(buf, t.value, sizeof(buf));
 				i.shift = get_shift(buf, &i.shift,
-					(int *) &i.shift_type, &i.shift_imm);
+					&i.shift_method, &i.shift_type);
 				if (i.shift < 0)
 					syntax_error(t.token);
 			}
@@ -489,7 +489,6 @@ peek()
 	return tokens[curr];
 }
 
-
 void
 syntax_error(Token t)
 {
@@ -498,10 +497,8 @@ syntax_error(Token t)
 	exit(EXIT_FAILURE);
 }
 
-
 void
 unget_token()
 {
 	curr--;
 }
-

@@ -16,7 +16,7 @@ int
 label(struct inst in)
 {
 	int	label;
-	Inst	instruction;
+	inst	instruction;
 
 	instruction = in.mnemonic;
 	label = labeladdr(in.label);
@@ -63,7 +63,7 @@ int
 rd_expr(struct inst in)
 {
 	int	rd, expr;
-	Inst	instruction;
+	inst	instruction;
 
 	rd = in.dest;
 	expr = in.op1;
@@ -88,14 +88,14 @@ int
 rd_op2(struct inst in)
 {
 	int	rd, op2, val;
-	Inst	instruction;
+	inst	instruction;
 
 	instruction = in.mnemonic;
 	rd = in.dest;
 
-	if (in.op2_imm == IMMEDIATE)
+	if (in.op2_type == V_IMM)
 		op2 = in.op2;
-	else if (in.op2_imm == REGISTER) {
+	else if (in.op2_type == V_REG) {
 		op2 = in.op2;
 		/* Value of op2 is PC+8 if r15 is used. */
 		if (op2 == PC)
@@ -103,10 +103,9 @@ rd_op2(struct inst in)
 		else
 			op2 = r[op2];
 	}
-	else if (in.op2_imm == SHIFT) {
-		fprintf(stderr, "Shifting not currently supported for"
-			" instruction type: op{cond}{S} Rd, Op2.\n");
-		/* exit(EXIT_FAILURE); */
+	else if (in.op2_type == V_SHIFT) {
+		shift_apply(&op2, in.op2, in.shift_method, in.shift_type,
+			in.shift);
 	}
 
 	if (instruction == CMP)
@@ -144,15 +143,15 @@ rd_op2(struct inst in)
 int
 rd_rn_op2(struct inst in) {
 	int	rd, rn, op2;
-	Inst	instruction;
+	inst	instruction;
 
 	instruction = in.mnemonic;
 	rd = in.dest;
 	rn = in.op1;
 
-	if (in.op2_imm == IMMEDIATE)
+	if (in.op2_type == V_IMM)
 		op2 = in.op2;
-	else if (in.op2_imm == REGISTER) {
+	else if (in.op2_type == V_REG) {
 		op2 = in.op2;
 		/* Value of op2 is PC+8 if r15 is used. */
 		if (op2 == PC)
@@ -160,10 +159,9 @@ rd_rn_op2(struct inst in) {
 		else
 			op2 = r[op2];
 	}
-	else if (in.op2_imm == SHIFT) {
-		fprintf(stderr, "Shifting not currently supported for"
-			" instruction type: op{cond}{S} Rd, Rn, Op2.\n");
-		/* exit(EXIT_FAILURE); */
+	else if (in.op2_type == V_SHIFT) {
+		shift_apply(&op2, in.op2, in.shift_method, in.shift_type,
+			in.shift);
 	}
 
 	if (instruction == ADC) {
@@ -227,7 +225,7 @@ rd_rn_op2(struct inst in) {
 int
 rd_rn_rm_ra(struct inst in) {
 	int	rd, rn, rm, ra;
-	Inst	instruction;
+	inst	instruction;
 
 	instruction = in.mnemonic;
 	rd = in.dest;
@@ -258,7 +256,7 @@ int
 reglist(struct inst in)
 {
 	int	reg_num;
-	Inst	instruction;
+	inst	instruction;
 
 	instruction = in.mnemonic;
 
@@ -295,13 +293,13 @@ int
 rt_addr(struct inst in)
 {
 	int	rt, addr;
-	Inst	instruction;
+	inst	instruction;
 
 	instruction = in.mnemonic;
 	rt = in.dest;
-	if (in.shift_type == S_LSL)
+	if (in.shift_method == S_LSL)
 		addr = r[in.op1] + (r[in.op2] << in.shift);
-	else if (in.shift_type == S_NONE)
+	else if (in.shift_method == S_NONE)
 		addr = r[in.op1] + r[in.op2];
 	else {
 		fprintf(stderr, "Invalid shift type\n");
@@ -349,5 +347,12 @@ set_flags(int result, int op1, int op2)
 	else if (op1 < 0 && op2 < 0 && result > 0)
 		r[APSR] = r[APSR] | ZFLAG;
 
+	return 0;
+}
+
+int
+shift_apply(int *result, int op2, shift_method s_method, val_type v_type,
+	int shift_amount)
+{
 	return 0;
 }

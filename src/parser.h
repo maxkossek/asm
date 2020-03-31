@@ -3,20 +3,21 @@
 
 #include "lexer.h"
 
-#define REGISTER 0
-#define IMMEDIATE 1
-#define SHIFT 2
 #define MAXINST 200
 #define MAXREG 16
 
 typedef enum {
 	I_LABEL, I_NAME, I_NONE, I_RD_EXPR, I_RD_OP2,
 	I_RD_RN_OP2, I_RD_RN_RM_RA, I_REGL, I_RT_ADDR,
-} Type;
+} inst_type;
 
 typedef enum {
 	S_ASR, S_LSL, S_LSR, S_NONE, S_ROR, S_RRX,
-} Shift_type;
+} shift_method;
+
+typedef enum {
+	V_IMM, V_REG, V_SHIFT,
+} val_type;
 
 typedef enum {
 	ADC, ADD, AND,
@@ -31,7 +32,7 @@ typedef enum {
 	RSB, RSC,
 	SBC, STR, SUB,
 	TEQ, TST,
-} Inst;
+} inst;
 
 typedef enum {
 	AL,
@@ -44,21 +45,21 @@ typedef enum {
 	NE,
 	PL,
 	VC, VS,
-} Cond;
+} cond;
 
 struct inst {
-	Type		type;
-	Inst		mnemonic;
+	inst_type	type;
+	inst		mnemonic;
 	int		setflag;
-	Cond		cond;
+	cond		cond;
 	int		dest;
 	int		op1;
 	int		op2;
-	int		op2_imm;
+	val_type	op2_type;
 	int		op3;
-	Shift_type	shift_type;
 	int		shift;
-	int		shift_imm;
+	shift_method	shift_method;
+	val_type	shift_type;
 	int		*reglist;
 	char		*label;
 };
@@ -67,10 +68,10 @@ struct inst	addre[MAXINST];
 static int	curr = 0;
 static int	line_num = 0;
 
-int		check_cond(Cond cond);
+int		check_cond(cond cond);
 int		execute();
 struct tok	expect(Token t);
-Inst		get_inst(char *str, int *flag, int *cond);
+inst		get_inst(char *str, int *flag, int *cond);
 struct tok	get_token();
 int		parse();
 struct inst	parse_instruction();
