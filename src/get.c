@@ -75,7 +75,7 @@ get_addr(char *str, int *rn, int *rm, int *shift,
 
 /* get_cond - Get the setflag and condition suffix from an instruction. */
 int
-get_cond(char *str, int *flag, int *cond)
+get_cond(char *str, int *flag, cond *cond)
 {
 	/* No suffix. */
 	if (*str == '\0')
@@ -332,9 +332,9 @@ get_reglist (char *str, int **reglist)
 	return 0;
 }
 
-/* get_shift_amount - Get the numeric value of a shift. */
+/* get_shift - Get the numeric value of a shift. */
 int
-get_shift(char *str, int *shift_amount, shift_method *shift_method,
+get_shift(char *str, int *shift_val, shift_method *shift_method,
 		val_type *shift_type)
 {
 	char *ptr = str;
@@ -350,7 +350,7 @@ get_shift(char *str, int *shift_amount, shift_method *shift_method,
 		*shift_method = S_ROR;
 	else if (strncmp(str, "RRX", 3) == 0) {
 		*shift_method = S_RRX;
-		*shift_amount = 1;
+		*shift_val = 1;
 	}
 	else {
 		fprintf(stderr, "Invalid shift: %s.\n", str);
@@ -363,31 +363,32 @@ get_shift(char *str, int *shift_amount, shift_method *shift_method,
 
 	if (*ptr == '#' && *shift_method != S_RRX) {
 		*shift_type = V_IMM;
-		*shift_amount = get_imm(ptr);
+		*shift_val = get_imm(ptr);
 	}
 	else if (*ptr == 'r' && *shift_method != S_RRX) {
 		*shift_type = V_REG;
-		*shift_amount = get_reg(ptr);
+		*shift_val = get_reg(ptr);
 	}
 	else {
+		*shift_type = V_NONE;
 		fprintf(stderr, "Invalid shift: %s.\n", str);
 		return -1;
 	}
 
 	if ((*shift_method == S_ASR || *shift_method == S_LSR) &&
-		(*shift_amount < 1 || *shift_amount > 32)) {
-		fprintf(stderr, "Invalid shift_amount (out of range 1-32): %s.\n",
-			str);
+		*shift_type == V_IMM &&
+		(*shift_val < 1 || *shift_val > 32)) {
+		fprintf(stderr, "ASR/LSR shift out of range 1-32: %s.\n", str);
 		return -1;
 	}
-	else if (*shift_method == S_LSL && (*shift_amount < 0 || *shift_amount > 31)) {
-		fprintf(stderr, "Invalid LSL shift_amount (out of range 0-31): %s.\n",
-			str);
+	else if (*shift_method == S_LSL && *shift_type == V_IMM &&
+		(*shift_val < 0 || *shift_val > 31)) {
+		fprintf(stderr, "LSL shift out of range 0-31: %s.\n", str);
 		return -1;
 	}
-	else if (*shift_method == S_ROR && (*shift_amount < 1 || *shift_amount > 31)) {
-		fprintf(stderr, "Invalid ROR shift_amount (out of range 0-31): %s.\n",
-			str);
+	else if (*shift_method == S_ROR && *shift_type == V_IMM && 
+		(*shift_val < 1 || *shift_val > 31)) {
+		fprintf(stderr, "ROR shift out of range 1-31: %s.\n", str);
 		return -1;
 	}
 

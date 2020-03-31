@@ -1,4 +1,4 @@
-@ Expected r0 = 5, r[ASPR] = ZFLAG
+@ Expected r0 = 5, r[ASPR] = ZFLAG | CFLAG
 ENTRY
 	MOV	r0, #5
 	CMP	r0, #5

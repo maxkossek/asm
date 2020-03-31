@@ -1,6 +1,8 @@
 ENTRY
-	RSCLES	r0,r5,r0,LSL r4
-	TSTNE	r1, r5, ASR r1
-	CMPGT	r13,r7,LSL #2
-	SUB	r11,r12,r3,ASR #5
+	MOV	r0, #0x8
+	MOV	r1, #0x1
+	MOV	r2, #0x2
+	SUBLES	r0, r0, r2, LSL r1
+	TEQ	r2, r0, ASR r2
+	ADDNE	r3, r2, r1, LSL #5
 END

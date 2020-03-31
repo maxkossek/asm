@@ -95,17 +95,22 @@ rd_op2(struct inst in)
 
 	if (in.op2_type == V_IMM)
 		op2 = in.op2;
-	else if (in.op2_type == V_REG) {
+	else if (in.op2_type == V_REG || in.op2_type == V_SHIFT) {
 		op2 = in.op2;
 		/* Value of op2 is PC+8 if r15 is used. */
 		if (op2 == PC)
 			op2 = r[op2] + 2;
 		else
 			op2 = r[op2];
+
+		if (in.op2_type == V_SHIFT) {
+			shift_apply(&op2, op2, in.shift_method, in.shift_type,
+					in.shift, in.setflag);
+		}
 	}
-	else if (in.op2_type == V_SHIFT) {
-		shift_apply(&op2, in.op2, in.shift_method, in.shift_type,
-			in.shift);
+	else {
+		fprintf(stderr, "Unknown operand 2 value type\n.");
+		exit(EXIT_FAILURE);
 	}
 
 	if (instruction == CMP)
@@ -151,17 +156,22 @@ rd_rn_op2(struct inst in) {
 
 	if (in.op2_type == V_IMM)
 		op2 = in.op2;
-	else if (in.op2_type == V_REG) {
+	else if (in.op2_type == V_REG || in.op2_type == V_SHIFT) {
 		op2 = in.op2;
 		/* Value of op2 is PC+8 if r15 is used. */
 		if (op2 == PC)
 			op2 = r[op2] + 2;
 		else
 			op2 = r[op2];
+
+		if (in.op2_type == V_SHIFT) {
+			shift_apply(&op2, op2, in.shift_method, in.shift_type,
+					in.shift, in.setflag);
+		}
 	}
-	else if (in.op2_type == V_SHIFT) {
-		shift_apply(&op2, in.op2, in.shift_method, in.shift_type,
-			in.shift);
+	else {
+		fprintf(stderr, "Unknown operand 2 value type\n.");
+		exit(EXIT_FAILURE);
 	}
 
 	if (instruction == ADC) {
@@ -335,24 +345,94 @@ set_flags(int result, int op1, int op2)
 	carry = uresult < uop1;
 
 	/*** TODO: Carry and overflow flags. */
-	r[APSR] = 0;
 	if (result < 0)
 		r[APSR] = r[APSR] | NFLAG;
+	else
+		r[APSR] = r[APSR] & (r[APSR] | ~NFLAG);
 	if (result == 0)
 		r[APSR] = r[APSR] | ZFLAG;
+	else
+		r[APSR] = r[APSR] & (r[APSR] | ~ZFLAG);
 	if (carry > 0)
 		r[APSR] = r[APSR] | CFLAG;
-	if (op1 > 0 && op2 > 0 && result < 0)
-		r[APSR] = r[APSR] | ZFLAG;
-	else if (op1 < 0 && op2 < 0 && result > 0)
-		r[APSR] = r[APSR] | ZFLAG;
+	else
+		r[APSR] = r[APSR] & (r[APSR] | ~CFLAG);
+	if ((op1 > 0 && op2 > 0 && result < 0)
+		|| (op1 < 0 && op2 < 0 && result > 0))
+		r[APSR] = r[APSR] | VFLAG;
+	else
+		r[APSR] = r[APSR] & (r[APSR] | ~VFLAG);
 
 	return 0;
 }
 
 int
 shift_apply(int *result, int op2, shift_method s_method, val_type v_type,
-	int shift_amount)
+	int shift_val, int set_flag)
 {
+	int shift_amount;
+
+	if (v_type == V_IMM)
+		shift_amount = shift_val;
+	else if (v_type == V_REG) {
+		/* Value of op2 is PC+8 if r15 is used. */
+		if (shift_val == PC)
+			shift_amount = r[shift_val] + 2;
+		else
+			shift_amount = r[shift_val];
+	}
+	else {
+		fprintf(stderr, "Unknown shift value type\n.");
+		exit(EXIT_FAILURE);
+	}
+
+	if (s_method == S_ASR) {
+		if (shift_amount > 32 || shift_amount < 1) {
+			fprintf(stderr, "ASR shift out of range (1-32).\n");
+			return -1;
+		}
+		*result = op2 >> shift_amount;
+	}
+	else if (s_method == S_LSL) {
+		if (shift_amount > 31 || shift_amount < 0) {
+			fprintf(stderr, "LSR shift out of range (0-31).\n");
+			return -1;
+		}
+		*result = op2 << shift_amount;
+	}
+	else if (s_method == S_LSR) {
+		if (shift_amount > 32 || shift_amount < 1) {
+			fprintf(stderr, "LSR shift out of range (1-32).\n");
+			return -1;
+		}
+		*result = op2 >> shift_amount;
+	}
+	else if (s_method == S_ROR) {
+		if (shift_amount > 31 || shift_amount < 1) {
+			fprintf(stderr, "ROR shift out of range (1-31).\n");
+			return -1;
+		}
+		*result = (op2 >> shift_amount % 32) |
+			(op2 << (32 - shift_amount) % 32);
+	}
+	else if (s_method == S_RRX) {
+		if (shift_amount != 1) {
+			fprintf(stderr, "RRX shift value not 1.\n");
+			return -1;
+		}
+		*result = op2 >> 1;
+		if (set_flag == 1) {
+			/* Set carry flag if bit[0] is set. */
+			if ((op2 & 0x1) == 0x1)
+				r[APSR] = r[APSR] | CFLAG;
+			else
+				r[APSR] = r[APSR] & (r[APSR] | ~CFLAG);
+		}
+	}
+	else {
+		fprintf(stderr, "Unknown shift method specified.\n");
+		return -1;
+	}
+
 	return 0;
 }

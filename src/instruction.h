@@ -16,6 +16,6 @@ int	reglist(struct inst in);
 int	rt_addr(struct inst in);
 int	set_flags(int result, int op1, int op2);
 int	shift_apply(int *result, int op2, shift_method s_method,
-	val_type v_type, int shift_amount);
+	val_type v_type, int shift_val, int set_flag);
 
 #endif

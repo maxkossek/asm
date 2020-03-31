@@ -16,7 +16,7 @@ typedef enum {
 } shift_method;
 
 typedef enum {
-	V_IMM, V_REG, V_SHIFT,
+	V_NONE, V_IMM, V_REG, V_SHIFT,
 } val_type;
 
 typedef enum {
@@ -71,7 +71,7 @@ static int	line_num = 0;
 int		check_cond(cond cond);
 int		execute();
 struct tok	expect(Token t);
-inst		get_inst(char *str, int *flag, int *cond);
+inst		get_inst(char *str, int *flag, cond *cond);
 struct tok	get_token();
 int		parse();
 struct inst	parse_instruction();

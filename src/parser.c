@@ -160,7 +160,7 @@ expect(Token t)
 
 /* get_inst - Find the instruction given an input string. */
 inst
-get_inst(char *str, int *flag, int *cond)
+get_inst(char *str, int *flag, cond *cond)
 {
 	inst inst = NONE;
 	char *ptr = str;
@@ -344,11 +344,12 @@ parse_instruction()
 	i.cond = AL;
 	i.setflag = 0;
 	i.type = I_NONE;
-	i.op2_type = V_REG;
+	i.op2_type = V_NONE;
+	i.shift_type = V_NONE;
 
 	t = expect(TAB);
 	t = expect(ID);
-	i.mnemonic = get_inst(t.value, &i.setflag, (int *) &i.cond);
+	i.mnemonic = get_inst(t.value, &i.setflag, &i.cond);
 	expect(TAB);
 
 	t = get_token();
@@ -429,9 +430,8 @@ parse_instruction()
 				strlcpy(buf, t.value, sizeof(buf));
 				t = get_token();
 				strlcat(buf, t.value, sizeof(buf));
-				i.shift = get_shift(buf, &i.shift,
-					&i.shift_method, &i.shift_type);
-				if (i.shift < 0)
+				if (get_shift(buf, &i.shift, &i.shift_method,
+					&i.shift_type) < 0)
 					syntax_error(t.token);
 			}
 		}
@@ -453,9 +453,8 @@ parse_instruction()
 				strlcpy(buf, t.value, sizeof(buf));
 				t = get_token();
 				strlcat(buf, t.value, sizeof(buf));
-				i.shift = get_shift(buf, &i.shift,
-					&i.shift_method, &i.shift_type);
-				if (i.shift < 0)
+				if (get_shift(buf, &i.shift, &i.shift_method,
+					&i.shift_type) < 0)
 					syntax_error(t.token);
 			}
 		}

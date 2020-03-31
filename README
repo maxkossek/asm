@@ -12,11 +12,10 @@ Currently supported:
 - Load / store instructions without shifts.
 - PUSH / POP instructions.
 - Set flag instruction suffix.
+- Shifting of operands (ASR, LSL, LSR, ROR, RRX).
 - TST and TEQ instructions.
 
 To be completed:
 - Generate label addresses on first parsing pass.
 - Limit what immediate values can be loaded in operand 2 (8-bit value rotated right by an even number of bits between 0-30).
 - Support for different execution types.
-- Support for all shifting types (ASR, LSR, ROR, RRX, etc.).
-- Shifting for the "OP{S}{cond} Rd, Op2" and "op{cond}{S} Rd, Rn, Op2" instruction types.
