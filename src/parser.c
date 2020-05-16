@@ -28,8 +28,7 @@ check_cond(cond cond)
 
 	switch (cond) {
 	case AL:
-		if (cond == AL)
-			return 0;
+		return 0;
 		break;
 	case CC:
 		if (c_curr != CFLAG)
@@ -110,7 +109,7 @@ check_cond(cond cond)
 
 
 int
-execute()
+execute(void)
 {
 	int		pc;
 	inst_type	type;
@@ -301,13 +300,13 @@ get_inst(char *str, int *flag, cond *cond)
 }
 
 struct tok
-get_token()
+get_token(void)
 {
 	return tokens[curr++];
 }
 
 int
-parse()
+parse(void)
 {
 	int		entry = 0;
 	struct tok	t;
@@ -335,10 +334,11 @@ parse()
 }
 
 struct inst
-parse_instruction()
+parse_instruction(void)
 {
 	struct tok 	t;
 	struct inst	i;
+	size_t		size;
 	char		buf[16];
 
 	i.cond = AL;
@@ -357,8 +357,9 @@ parse_instruction()
 		/* No destination register, so parse label. */
 		if ((i.dest = get_reg(t.value)) == -1) {
 			i.dest = -1;
-			i.label = malloc(strlen(t.value) + 1);
-			strlcpy(i.label, t.value, strlen(t.value) + 1);
+			size = strlen(t.value) + 1;
+			i.label = malloc(size);
+			strlcpy(i.label, t.value, size);
 			i.type = I_LABEL;
 		}
 	}
@@ -467,23 +468,25 @@ parse_instruction()
 
 
 struct inst
-parse_label()
+parse_label(void)
 {
 	struct tok 	t;
 	struct inst	i;
+	size_t		size;
 
 	i.type = I_NAME;
 
 	t = expect(ID);
-	i.label = malloc(strlen(t.value) + 1);
-	strlcpy(i.label, t.value, strlen(t.value) + 1);
+	size = strlen(t.value) + 1;
+	i.label = malloc(size);
+	strlcpy(i.label, t.value, size);
 	expect(COLON);
 
 	return i;
 }
 
 struct tok
-peek()
+peek(void)
 {
 	return tokens[curr];
 }
@@ -497,7 +500,7 @@ syntax_error(Token t)
 }
 
 void
-unget_token()
+unget_token(void)
 {
 	curr--;
 }

@@ -2,7 +2,7 @@
 #define LEXER_H
 
 #define ID_SIZE 32
-#define TOKENSIZE 256
+#define MAXTOKEN 256
 
 typedef enum {
 	ADDR, BRACKETL, BRACKETR, COLON, COMMA,
@@ -15,13 +15,13 @@ struct tok {
 };
 
 static int	count = 0;
-struct tok 	tokens[TOKENSIZE];
+struct tok 	tokens[MAXTOKEN];
 
-int		lex_input();
-struct tok	gettok();
-struct tok	parse_id();
-char		*parse_addr();
-char		*parse_num();
-char		*parse_reglist();
+int		lex_input(void);
+struct tok	gettok(void);
+struct tok	parse_id(void);
+char		*parse_addr(void);
+char		*parse_num(void);
+char		*parse_reglist(void);
 
 #endif

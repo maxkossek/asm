@@ -7,7 +7,7 @@
 #include "lexer.h"
 
 int
-lex_input()
+lex_input(void)
 {
 	struct tok t;
 	count = 0;
@@ -32,7 +32,7 @@ lex_input()
 
 /* gettok - Returns the next token from the input. */
 struct tok
-gettok()
+gettok(void)
 {
 	struct tok	t;
 	char		c = ' ';
@@ -108,10 +108,10 @@ gettok()
 }
 
 struct tok
-parse_id()
+parse_id(void)
 {
 	struct tok	t;
-	int		size = 0;
+	size_t		size = 0;
 	char		id[ID_SIZE];
 	char		*ptr;
 	char		c;
@@ -154,9 +154,9 @@ parse_id()
 
 /* parse_addr - Parses an address of the form '[ADDR]'. */
 char *
-parse_addr()
+parse_addr(void)
 {
-	int		size = 0;
+	size_t		size = 0;
 	char		c;
 	char		str[ID_SIZE];
 	char		*ptr;
@@ -188,9 +188,9 @@ parse_addr()
 }
 
 char *
-parse_num()
+parse_num(void)
 {
-	int		size = 0;
+	size_t		size = 0;
 	char		c;
 	char		str[ID_SIZE];
 	char		*ptr;
@@ -223,9 +223,9 @@ parse_num()
 
 
 char *
-parse_reglist()
+parse_reglist(void)
 {
-	int		size = 0;
+	size_t		size = 0;
 	char		c;
 	char		str[ID_SIZE];
 	char		*ptr;

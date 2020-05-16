@@ -69,15 +69,15 @@ static int	curr = 0;
 static int	line_num = 0;
 
 int		check_cond(cond cond);
-int		execute();
+int		execute(void);
 struct tok	expect(Token t);
 inst		get_inst(char *str, int *flag, cond *cond);
-struct tok	get_token();
-int		parse();
-struct inst	parse_instruction();
-struct inst	parse_label();
-struct tok	peek();
+struct tok	get_token(void);
+int		parse(void);
+struct inst	parse_instruction(void);
+struct inst	parse_label(void);
+struct tok	peek(void);
 void		syntax_error(Token t);
-void		unget_token();
+void		unget_token(void);
 
 #endif
